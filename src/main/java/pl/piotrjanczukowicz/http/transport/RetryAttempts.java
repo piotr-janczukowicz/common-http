@@ -68,12 +68,16 @@ final class RetryAttempts {
 
     void advance(final RetryPolicy.RetryWait.Reason reason) {
         switch (reason) {
-            case IO -> ioAttempt++;
+            case IO -> {
+                ioAttempt++;
+            }
             case RATE_LIMIT -> {
                 rateLimitAttempt++;
                 countRateLimitWait();
             }
-            case SERVER_ERROR -> serverAttempt++;
+            case SERVER_ERROR -> {
+                serverAttempt++;
+            }
         }
     }
 }

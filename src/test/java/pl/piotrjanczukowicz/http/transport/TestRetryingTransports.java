@@ -2,9 +2,7 @@ package pl.piotrjanczukowicz.http.transport;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.List;
 import java.util.random.RandomGenerator;
-import pl.piotrjanczukowicz.http.support.MutableClock;
 
 public final class TestRetryingTransports {
 
