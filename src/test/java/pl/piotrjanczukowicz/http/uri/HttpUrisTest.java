@@ -38,7 +38,9 @@ class HttpUrisTest {
     @ParameterizedTest
     @ValueSource(strings = {"mailto:x@example.test", "ftp://example.test/", "/relative/path"})
     void withTrailingSlash_shouldThrowIllegalArgument_whenUriIsNotHttp(final String uri) {
-        final Throwable thrown = catchThrowable(() -> HttpUris.withTrailingSlash(URI.create(uri), "baseUri"));
+        final var uriValue = URI.create(uri);
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.withTrailingSlash(uriValue, "baseUri"));
 
         assertThat(thrown)
                 .isInstanceOf(IllegalArgumentException.class)
@@ -47,16 +49,20 @@ class HttpUrisTest {
 
     @Test
     void resolveApiPath_shouldThrowIllegalArgument_whenBaseIsNotHttp() {
-        final Throwable thrown =
-                catchThrowable(() -> HttpUris.resolveApiPath(URI.create("ftp://example.test/"), "user", Map.of()));
+        final var uri = URI.create("ftp://example.test/");
+
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiPath(uri, "user", query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("baseUri");
     }
 
     @Test
     void resolveReference_shouldThrowIllegalArgument_whenBaseIsNotHttp() {
-        final Throwable thrown =
-                catchThrowable(() -> HttpUris.resolveReference(URI.create("mailto:x@example.test"), "next"));
+        final var uri = URI.create("mailto:x@example.test");
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveReference(uri, "next"));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("base");
     }
@@ -194,8 +200,11 @@ class HttpUrisTest {
                 "\\\\api.example.test:81/svc/v1/x"
             })
     void resolveApiPath_shouldReject_whenPathIsNotRelativeApiPath(final String path) {
-        final Throwable thrown = catchThrowable(
-                () -> HttpUris.resolveApiPath(URI.create("https://api.example.test/svc/v1/"), path, Map.of()));
+        final var uri = URI.create("https://api.example.test/svc/v1/");
+
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiPath(uri, path, query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("relative API path");
     }
@@ -246,7 +255,9 @@ class HttpUrisTest {
     void resolveApiHttpUrl_shouldThrow_whenBasePathHasNoTrailingSlash() {
         final HttpUrl base = HttpUrl.get("https://api.example.test/api/repos");
 
-        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, "-evil", Map.of()));
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, "-evil", query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("must end with /");
     }
@@ -264,8 +275,9 @@ class HttpUrisTest {
     void resolveApiHttpUrl_shouldReject_whenPathIsProtocolRelative() {
         final HttpUrl base = HttpUrl.get("https://api.example.test/");
 
-        final Throwable thrown =
-                catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, "//example.com/other", Map.of()));
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, "//example.com/other", query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("relative API path");
     }
@@ -274,8 +286,9 @@ class HttpUrisTest {
     void resolveApiHttpUrl_shouldThrowIllegalArgument_whenPathIsNotHttpReference() {
         final HttpUrl base = HttpUrl.get("https://api.example.test/");
 
-        final Throwable thrown =
-                catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, "mailto:x@example.test", Map.of()));
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, "mailto:x@example.test", query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }
@@ -284,7 +297,9 @@ class HttpUrisTest {
     void resolveApiHttpUrl_shouldThrowNullPointer_whenPathNull() {
         final HttpUrl base = HttpUrl.get("https://api.example.test/");
 
-        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, null, Map.of()));
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, null, query));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("path");
     }
@@ -314,7 +329,9 @@ class HttpUrisTest {
     void copyQueryValues_shouldReturnImmutableValueLists_whenCalled() {
         final Map<String, List<String>> copy = HttpUris.copyQueryValues(Map.of("q", List.of("a")));
 
-        final Throwable thrown = catchThrowable(() -> copy.get("q").add("b"));
+        final var get = copy.get("q");
+
+        final Throwable thrown = catchThrowable(() -> get.add("b"));
 
         assertThat(thrown).isInstanceOf(UnsupportedOperationException.class);
     }
@@ -357,15 +374,20 @@ class HttpUrisTest {
     void resolveApiPath_shouldThrowIllegalArgument_whenPathIsNotHttpReference(final String path) {
         final URI base = URI.create("https://api.example.test/");
 
-        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiPath(base, path, Map.of()));
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiPath(base, path, query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("path");
     }
 
     @Test
     void resolve_shouldThrowIllegalArgument_whenRelativePathIsNotHttpReference() {
-        final Throwable thrown =
-                catchThrowable(() -> HttpUris.resolve(URI.create("https://api.example.test/"), "ftp://h/x", Map.of()));
+        final var uri = URI.create("https://api.example.test/");
+
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolve(uri, "ftp://h/x", query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("path");
     }
@@ -429,7 +451,9 @@ class HttpUrisTest {
     void resolveApiHttpUrl_shouldReject_whenLeadingSpaceHidesAnotherOrigin(final String path) {
         final HttpUrl base = HttpUrl.get("https://api.example.test/");
 
-        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, path, Map.of()));
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> HttpUris.resolveApiHttpUrl(base, path, query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("relative API path");
     }

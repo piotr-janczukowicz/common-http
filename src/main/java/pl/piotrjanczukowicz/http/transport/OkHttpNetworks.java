@@ -48,7 +48,11 @@ final class OkHttpNetworks {
     }
 
     private static void applyProxy(final OkHttpClient.Builder builder, final HttpProxy proxy) {
-        final Proxy.Type type = proxy.type() == HttpProxy.Type.SOCKS ? Proxy.Type.SOCKS : Proxy.Type.HTTP;
+        final Proxy.Type type =
+                switch (proxy.type()) {
+                    case SOCKS -> Proxy.Type.SOCKS;
+                    case HTTP -> Proxy.Type.HTTP;
+                };
         builder.proxy(new Proxy(type, InetSocketAddress.createUnresolved(proxy.host(), proxy.port())));
         if (proxy.hasCredentials()) {
             final String credential = Credentials.basic(

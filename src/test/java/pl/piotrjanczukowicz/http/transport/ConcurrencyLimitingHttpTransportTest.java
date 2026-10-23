@@ -289,16 +289,18 @@ class ConcurrencyLimitingHttpTransportTest {
 
     @Test
     void constructor_shouldThrow_whenMaxSlotWaitNotPositive() {
-        final Throwable thrown =
-                catchThrowable(() -> new ConcurrencyLimitingHttpTransport(HttpTransportMocks.mock(), 1, Duration.ZERO));
+        final var mock = HttpTransportMocks.mock();
+
+        final Throwable thrown = catchThrowable(() -> new ConcurrencyLimitingHttpTransport(mock, 1, Duration.ZERO));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxSlotWait");
     }
 
     @Test
     void constructor_shouldThrow_whenLimitNotPositive() {
-        final Throwable thrown =
-                catchThrowable(() -> new ConcurrencyLimitingHttpTransport(HttpTransportMocks.mock(), 0));
+        final var mock = HttpTransportMocks.mock();
+
+        final Throwable thrown = catchThrowable(() -> new ConcurrencyLimitingHttpTransport(mock, 0));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxConcurrent");
     }
@@ -322,8 +324,10 @@ class ConcurrencyLimitingHttpTransportTest {
 
     @Test
     void constructor_shouldThrow_whenMaxSlotWaitAboveLimit() {
-        final Throwable thrown = catchThrowable(
-                () -> new ConcurrencyLimitingHttpTransport(HttpTransportMocks.mock(), 1, Duration.ofDays(365 * 400)));
+        final var mock = HttpTransportMocks.mock();
+        final var duration = Duration.ofDays(365 * 400);
+
+        final Throwable thrown = catchThrowable(() -> new ConcurrencyLimitingHttpTransport(mock, 1, duration));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxSlotWait");
     }

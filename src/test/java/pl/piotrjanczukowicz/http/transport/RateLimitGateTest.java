@@ -466,8 +466,11 @@ class RateLimitGateTest {
 
     @Test
     void constructor_shouldThrow_whenClockIsNull() {
-        final Throwable thrown = catchThrowable(
-                () -> new RateLimitGate(null, Duration.ofHours(1), Duration.ofSeconds(60), Duration.ofMinutes(5)));
+        final var duration = Duration.ofHours(1);
+        final var durationValue = Duration.ofSeconds(60);
+        final var duration3 = Duration.ofMinutes(5);
+
+        final Throwable thrown = catchThrowable(() -> new RateLimitGate(null, durationValue, duration3, duration));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("clock");
     }

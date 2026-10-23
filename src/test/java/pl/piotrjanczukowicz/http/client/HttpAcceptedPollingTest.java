@@ -37,7 +37,9 @@ class HttpAcceptedPollingTest {
 
     @Test
     void constructor_shouldThrow_whenDelayNegative() {
-        final Throwable thrown = catchThrowable(() -> new HttpAcceptedPolling(2, Duration.ofSeconds(-1)));
+        final var duration = Duration.ofSeconds(-1);
+
+        final Throwable thrown = catchThrowable(() -> new HttpAcceptedPolling(2, duration));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("delay");
     }

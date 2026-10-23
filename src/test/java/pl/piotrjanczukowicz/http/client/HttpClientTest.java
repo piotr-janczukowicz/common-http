@@ -126,7 +126,9 @@ class HttpClientTest {
                     throw new UncheckedIOException("could not fetch an installation token", failure);
                 }))
                 .build()) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/user")));
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isSameAs(failure);
             verify(transport, never()).execute(any());
@@ -155,7 +157,9 @@ class HttpClientTest {
                         HttpStatus.OK.code(), HttpHeaders.empty(), failingToClose(closeFailure)));
 
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(() -> client.stream(HttpCall.get("/zip"), response -> {
+            final var call = HttpCall.get("/zip");
+
+            final Throwable thrown = catchThrowable(() -> client.stream(call, response -> {
                 throw handlerFailure;
             }));
 
@@ -170,7 +174,9 @@ class HttpClientTest {
         statuses.add(null);
 
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/user"), statuses, true));
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call, statuses, true));
 
             assertThat(thrown)
                     .isInstanceOf(NullPointerException.class)
@@ -187,8 +193,9 @@ class HttpClientTest {
                     throw new UncheckedIOException("could not fetch an installation token", failure);
                 }))
                 .build()) {
-            final Throwable thrown =
-                    catchThrowable(() -> client.stream(HttpCall.get("/user"), HttpStreamResponse::statusCode));
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> client.stream(call, HttpStreamResponse::statusCode));
 
             assertThat(thrown).isSameAs(failure);
         }
@@ -212,7 +219,9 @@ class HttpClientTest {
                 .thenReturn(new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), null));
 
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/missing")));
+            final var call = HttpCall.get("/missing");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
@@ -266,8 +275,9 @@ class HttpClientTest {
     @Test
     void execute_shouldReject_whenAbsoluteUriTargetHasDotSegments() {
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(
-                    () -> client.execute(HttpCall.get(URI.create("https://api.example.test/a/%2e%2e/b"))));
+            final var call = HttpCall.get(URI.create("https://api.example.test/a/%2e%2e/b"));
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
         }
@@ -276,26 +286,34 @@ class HttpClientTest {
     @Test
     void execute_shouldReject_whenAbsoluteUriTargetIsOnAnotherOrigin() {
         try (final HttpClient client = client()) {
-            final Throwable thrown =
-                    catchThrowable(() -> client.execute(HttpCall.get(URI.create("https://evil.test/x"))));
+            final var call = HttpCall.get(URI.create("https://evil.test/x"));
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
         }
     }
 
     @Test
-    void execute_shouldRejectNonHttpAbsoluteUriTarget_whenQueryIsEmptyOrNot() {
+    void execute_shouldRejectNonHttpAbsoluteUriTarget_whenQueryIsAbsent() {
         try (final HttpClient client = client()) {
             final HttpCall withoutQuery = HttpCall.get(URI.create("ftp://api.example.test/x"));
-            final HttpCall withQuery =
-                    HttpCall.get(URI.create("ftp://api.example.test/x")).withQueryValues(Map.of("a", List.of("b")));
 
             final Throwable thrown = catchThrowable(() -> client.execute(withoutQuery));
 
             assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
-            assertThat(catchThrowable(() -> client.execute(withQuery)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("uri");
+        }
+    }
+
+    @Test
+    void execute_shouldRejectNonHttpAbsoluteUriTarget_whenQueryIsPresent() {
+        try (final HttpClient client = client()) {
+            final HttpCall withQuery =
+                    HttpCall.get(URI.create("ftp://api.example.test/x")).withQueryValues(Map.of("a", List.of("b")));
+
+            final Throwable thrown = catchThrowable(() -> client.execute(withQuery));
+
+            assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("uri");
         }
     }
 
@@ -329,8 +347,9 @@ class HttpClientTest {
         when(transport.execute(any())).thenReturn(new HttpResponse(HttpStatus.OK.code(), HttpHeaders.empty(), null));
 
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(
-                    () -> client.redirectLocation(HttpCall.get("/tarball").withQuery(Map.of("token", "secret"))));
+            final var call = HttpCall.get("/tarball").withQuery(Map.of("token", "secret"));
+
+            final Throwable thrown = catchThrowable(() -> client.redirectLocation(call));
 
             assertThat(thrown)
                     .isInstanceOf(IllegalStateException.class)
@@ -346,7 +365,9 @@ class HttpClientTest {
                 .thenReturn(new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(() -> client.redirectLocation(HttpCall.get("/missing")));
+            final var call = HttpCall.get("/missing");
+
+            final Throwable thrown = catchThrowable(() -> client.redirectLocation(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
@@ -396,7 +417,9 @@ class HttpClientTest {
                 .thenReturn(new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(() -> client.redirectLocationIfAny(HttpCall.get("/missing")));
+            final var call = HttpCall.get("/missing");
+
+            final Throwable thrown = catchThrowable(() -> client.redirectLocationIfAny(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }

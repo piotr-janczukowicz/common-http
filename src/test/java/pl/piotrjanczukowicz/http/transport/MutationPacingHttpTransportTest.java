@@ -75,7 +75,7 @@ class MutationPacingHttpTransportTest {
 
         assertSoftly(softly -> {
             softly.assertThat(delegate.startedAt).hasSize(2);
-            softly.assertThat(Duration.between(delegate.startedAt.get(0), delegate.startedAt.get(1)))
+            softly.assertThat(Duration.between(delegate.startedAt.getFirst(), delegate.startedAt.get(1)))
                     .isGreaterThanOrEqualTo(INTERVAL);
             softly.assertThat(sleeper.sleeps).containsExactly(INTERVAL);
         });
@@ -180,7 +180,7 @@ class MutationPacingHttpTransportTest {
 
         transport.execute(POST_REQUEST);
 
-        assertThat(Duration.between(delegate.startedAt.get(0), delegate.startedAt.get(1)))
+        assertThat(Duration.between(delegate.startedAt.getFirst(), delegate.startedAt.get(1)))
                 .isGreaterThanOrEqualTo(Duration.ofMillis(50));
     }
 
@@ -235,8 +235,11 @@ class MutationPacingHttpTransportTest {
     void constructor_shouldRejectInterval_whenNotPositive(final long millis) {
         final RecordingDelegate delegate = new RecordingDelegate(Clock.systemUTC());
 
+        final var transport = delegate.transport();
+        final var duration = Duration.ofMillis(millis);
+
         final Throwable thrown = catchThrowable(() -> new MutationPacingHttpTransport(
-                delegate.transport(), Duration.ofMillis(millis), MutationPacingHttpTransport.DEFAULT_MUTATION_METHODS));
+                transport, duration, MutationPacingHttpTransport.DEFAULT_MUTATION_METHODS));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }
@@ -245,8 +248,11 @@ class MutationPacingHttpTransportTest {
     void constructor_shouldRejectMethods_whenEmpty() {
         final RecordingDelegate delegate = new RecordingDelegate(Clock.systemUTC());
 
-        final Throwable thrown =
-                catchThrowable(() -> new MutationPacingHttpTransport(delegate.transport(), INTERVAL, Set.of()));
+        final var transport = delegate.transport();
+
+        final Set<HttpMethod> methods = Set.of();
+
+        final Throwable thrown = catchThrowable(() -> new MutationPacingHttpTransport(transport, INTERVAL, methods));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }

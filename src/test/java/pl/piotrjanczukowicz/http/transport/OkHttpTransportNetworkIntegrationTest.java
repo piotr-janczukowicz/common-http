@@ -116,8 +116,9 @@ class OkHttpTransportNetworkIntegrationTest {
                 HttpNetworkConfiguration.builder().hostResolver(host -> null).build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final Throwable thrown =
-                    catchThrowable(() -> transport.execute(request("http://null-answer.invalid/ping")));
+            final var request = request("http://null-answer.invalid/ping");
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown)
                     .isInstanceOf(UnknownHostException.class)
@@ -132,8 +133,9 @@ class OkHttpTransportNetworkIntegrationTest {
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final Throwable thrown =
-                    catchThrowable(() -> transport.execute(request("http://empty-answer.invalid/ping")));
+            final var request = request("http://empty-answer.invalid/ping");
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(UnknownHostException.class).hasMessageContaining("empty-answer.invalid");
         }
@@ -170,7 +172,9 @@ class OkHttpTransportNetworkIntegrationTest {
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final Throwable thrown = catchThrowable(() -> transport.execute(request("http://nowhere.invalid:80/ping")));
+            final var request = request("http://nowhere.invalid:80/ping");
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(UnknownHostException.class);
         }
@@ -244,7 +248,9 @@ class OkHttpTransportNetworkIntegrationTest {
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final Throwable thrown = catchThrowable(() -> transport.execute(request("http://upstream.invalid/ping")));
+            final var request = request("http://upstream.invalid/ping");
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(IOException.class);
         }
@@ -257,7 +263,9 @@ class OkHttpTransportNetworkIntegrationTest {
         };
         try (HttpTransport transport = HttpTransports.okHttp(configuration(
                 HttpNetworkConfiguration.builder().hostResolver(brokenResolver).build()))) {
-            final Throwable thrown = catchThrowable(() -> transport.execute(request("http://upstream.invalid/ping")));
+            final var request = request("http://upstream.invalid/ping");
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessageContaining("resolver is broken");
         }
@@ -268,7 +276,9 @@ class OkHttpTransportNetworkIntegrationTest {
         try (HttpTransport transport = HttpTransports.okHttp(configuration(HttpNetworkConfiguration.builder()
                 .hostResolver(IPV4_ONLY_RESOLVER)
                 .build()))) {
-            final Throwable thrown = catchThrowable(() -> transport.execute(httpsRequest()));
+            final var httpsRequest = httpsRequest();
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(httpsRequest));
 
             assertThat(thrown).isInstanceOf(SSLException.class);
         }
@@ -300,7 +310,9 @@ class OkHttpTransportNetworkIntegrationTest {
                 trusting().certificatePin("localhost", backupPin()).build();
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration(network))) {
-            final Throwable thrown = catchThrowable(() -> transport.execute(httpsRequest()));
+            final var httpsRequest = httpsRequest();
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(httpsRequest));
 
             assertThat(thrown).isInstanceOf(SSLException.class).hasMessageContaining("pinning failure");
         }

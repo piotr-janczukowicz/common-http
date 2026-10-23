@@ -56,7 +56,9 @@ class HttpClientConfigurationTest {
 
     @Test
     void constructor_shouldThrow_whenBaseUriNull() {
-        final Throwable thrown = catchThrowable(() -> new HttpClientConfiguration(null, HttpHeaders.empty()));
+        final var headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> new HttpClientConfiguration(null, headers));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("baseUri");
     }

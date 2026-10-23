@@ -140,13 +140,17 @@ public final class ConcurrencyLimitingHttpTransport implements HttpTransport {
                     .addArgument(maxSlotWait)
                     .log();
         }
+        if (!tryAcquireSlot()) {
+            throw new NonRetryableIOException(
+                    "no free request slot within " + maxSlotWait + " (limit " + maxConcurrent
+                            + "); a call made from inside a stream handler can wait for its own slot",
+                    new InterruptedIOException("timed out waiting for a free request slot"));
+        }
+    }
+
+    private boolean tryAcquireSlot() throws NonRetryableIOException {
         try {
-            if (!slots.tryAcquire(maxSlotWait.toNanos(), TimeUnit.NANOSECONDS)) {
-                throw new NonRetryableIOException(
-                        "no free request slot within " + maxSlotWait + " (limit " + maxConcurrent
-                                + "); a call made from inside a stream handler can wait for its own slot",
-                        new InterruptedIOException("timed out waiting for a free request slot"));
-            }
+            return slots.tryAcquire(maxSlotWait.toNanos(), TimeUnit.NANOSECONDS);
         } catch (final InterruptedException e) {
             throw new NonRetryableIOException(INTERRUPTED_WAIT, toInterruptedIo(e, INTERRUPTED_WAIT));
         }

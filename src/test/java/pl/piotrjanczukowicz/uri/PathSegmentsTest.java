@@ -112,7 +112,9 @@ class PathSegmentsTest {
 
     @Test
     void append_shouldThrow_whenValueTypeUnsupported() {
-        final Throwable thrown = catchThrowable(() -> appended("username", false, URI.create("https://example.test")));
+        final var uri = URI.create("https://example.test");
+
+        final Throwable thrown = catchThrowable(() -> appended("username", false, uri));
 
         assertThat(thrown)
                 .isInstanceOf(IllegalArgumentException.class)

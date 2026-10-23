@@ -25,4 +25,21 @@ class HttpMethodTest {
     void usesEmptyBodyWhenAbsent_shouldBeFalse_whenMethodOmitsBody(final HttpMethod method) {
         assertThat(method.isEmptyBodySentWhenAbsent()).isFalse();
     }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = HttpMethod.class,
+            names = {"GET", "HEAD"})
+    void isBodyless_shouldBeTrue_whenMethodRefusesBody(final HttpMethod method) {
+        assertThat(method.isBodyless()).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = HttpMethod.class,
+            names = {"GET", "HEAD"},
+            mode = EnumSource.Mode.EXCLUDE)
+    void isBodyless_shouldBeFalse_whenMethodMayCarryBody(final HttpMethod method) {
+        assertThat(method.isBodyless()).isFalse();
+    }
 }

@@ -1,6 +1,11 @@
 <settings>
   <servers>
     <server>
+      <id>github</id>
+      <username>${env.GITHUB_ACTOR}</username>
+      <password>${env.GITHUB_TOKEN}</password>
+    </server>
+    <server>
       <id>github-common-parent</id>
       <username>${env.GITHUB_ACTOR}</username>
       <password>${env.PACKAGES_TOKEN}</password>

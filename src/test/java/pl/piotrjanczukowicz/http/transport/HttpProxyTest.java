@@ -47,26 +47,86 @@ class HttpProxyTest {
     }
 
     @Test
-    void constructor_shouldReject_whenArgumentsAreInvalid() {
-        assertSoftly(softly -> {
-            softly.assertThat(catchThrowable(() -> HttpProxy.http(" ", 3128)))
-                    .isInstanceOf(IllegalArgumentException.class);
-            softly.assertThat(catchThrowable(() -> HttpProxy.http(null, 3128)))
-                    .isInstanceOf(NullPointerException.class);
-            softly.assertThat(catchThrowable(() -> new HttpProxy(null, "h", 1, null, null)))
-                    .isInstanceOf(NullPointerException.class);
-            softly.assertThat(catchThrowable(() -> new HttpProxy(HttpProxy.Type.HTTP, "h", 1, "user", null)))
-                    .isInstanceOf(IllegalArgumentException.class);
-            softly.assertThat(catchThrowable(() -> new HttpProxy(HttpProxy.Type.HTTP, "h", 1, null, "secret")))
-                    .isInstanceOf(IllegalArgumentException.class);
-            softly.assertThat(catchThrowable(() -> HttpProxy.http("h", 1).withCredentials(" ", "secret")))
-                    .isInstanceOf(IllegalArgumentException.class);
-            softly.assertThat(catchThrowable(() -> HttpProxy.http("h", 1).withCredentials(null, "secret")))
-                    .isInstanceOf(NullPointerException.class);
-            softly.assertThat(catchThrowable(() -> HttpProxy.http("h", 1).withCredentials("user", null)))
-                    .isInstanceOf(NullPointerException.class);
-            softly.assertThat(catchThrowable(() -> HttpProxy.socks("h", 1).withCredentials("user", "secret")))
-                    .isInstanceOf(IllegalArgumentException.class);
-        });
+    void http_shouldReject_whenHostIsBlank() {
+        final String host = " ";
+
+        final Throwable thrown = catchThrowable(() -> HttpProxy.http(host, 3128));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void http_shouldReject_whenHostIsNull() {
+        final String host = null;
+
+        final Throwable thrown = catchThrowable(() -> HttpProxy.http(host, 3128));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void constructor_shouldReject_whenTypeIsNull() {
+        final HttpProxy.Type type = null;
+
+        final Throwable thrown = catchThrowable(() -> new HttpProxy(type, "h", 1, null, null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void constructor_shouldReject_whenUsernameIsSetWithoutPassword() {
+        final String username = "user";
+
+        final Throwable thrown = catchThrowable(() -> new HttpProxy(HttpProxy.Type.HTTP, "h", 1, username, null));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void constructor_shouldReject_whenPasswordIsSetWithoutUsername() {
+        final String password = "secret";
+
+        final Throwable thrown = catchThrowable(() -> new HttpProxy(HttpProxy.Type.HTTP, "h", 1, null, password));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void withCredentials_shouldReject_whenUsernameIsBlank() {
+        final HttpProxy proxy = HttpProxy.http("h", 1);
+        final String username = " ";
+
+        final Throwable thrown = catchThrowable(() -> proxy.withCredentials(username, "secret"));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void withCredentials_shouldReject_whenUsernameIsNull() {
+        final HttpProxy proxy = HttpProxy.http("h", 1);
+        final String username = null;
+
+        final Throwable thrown = catchThrowable(() -> proxy.withCredentials(username, "secret"));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void withCredentials_shouldReject_whenPasswordIsNull() {
+        final HttpProxy proxy = HttpProxy.http("h", 1);
+        final String password = null;
+
+        final Throwable thrown = catchThrowable(() -> proxy.withCredentials("user", password));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void withCredentials_shouldReject_whenProxyIsSocks() {
+        final HttpProxy proxy = HttpProxy.socks("h", 1);
+
+        final Throwable thrown = catchThrowable(() -> proxy.withCredentials("user", "secret"));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }
 }

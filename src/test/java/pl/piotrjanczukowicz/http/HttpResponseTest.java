@@ -65,7 +65,9 @@ class HttpResponseTest {
 
     @Test
     void constructor_shouldThrow_whenStatusCodeOutOfRange() {
-        final Throwable thrown = catchThrowable(() -> new HttpResponse(99, HttpHeaders.empty(), null));
+        final var headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> new HttpResponse(99, headers, null));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("99");
     }

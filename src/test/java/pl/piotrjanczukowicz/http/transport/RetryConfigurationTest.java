@@ -102,7 +102,9 @@ class RetryConfigurationTest {
     void build_shouldThrow_whenRetryableServerStatusIsOutsideErrorRange(final int status) {
         final RetryConfiguration.Builder builder = RetryConfiguration.builder().retryableServerStatuses(Set.of(status));
 
-        assertThat(catchThrowable(builder::build)).isInstanceOf(IllegalArgumentException.class);
+        final Throwable thrown = catchThrowable(builder::build);
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -410,15 +412,14 @@ class RetryConfigurationTest {
                 Duration.ofSeconds(20),
                 Duration.ofHours(1));
 
+        final var attempts = valid.attempts();
+        final var jitter = valid.jitter();
+        final var retryable = valid.retryable();
+        final var rateLimitDetector = valid.rateLimitDetector();
+        final var rateLimitEventListener = valid.rateLimitEventListener();
+
         final Throwable thrown = catchThrowable(() -> new RetryConfiguration(
-                valid.attempts(),
-                waits,
-                valid.jitter(),
-                valid.retryable(),
-                valid.rateLimitDetector(),
-                true,
-                valid.rateLimitEventListener(),
-                null));
+                attempts, waits, jitter, retryable, rateLimitDetector, true, rateLimitEventListener, null));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxRateLimitWait");
     }

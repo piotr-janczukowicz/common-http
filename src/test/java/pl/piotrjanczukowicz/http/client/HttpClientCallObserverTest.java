@@ -71,7 +71,9 @@ class HttpClientCallObserverTest {
                         new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), HttpBody.of(new byte[0])));
 
         try (HttpClient client = client(events::add)) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/missing")));
+            final var call = HttpCall.get("/missing");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
@@ -88,7 +90,9 @@ class HttpClientCallObserverTest {
         when(transport.execute(any())).thenThrow(refused);
 
         try (HttpClient client = client(events::add)) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/user")));
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isSameAs(refused);
         }
@@ -117,8 +121,9 @@ class HttpClientCallObserverTest {
                         HttpBody.absent()));
 
         try (HttpClient client = client(events::add)) {
-            final Throwable thrown = catchThrowable(
-                    () -> client.execute(HttpCall.of(HttpMethod.POST, "/start").withBody(HttpBody.of(new byte[] {1}))));
+            final var call = HttpCall.of(HttpMethod.POST, "/start").withBody(HttpBody.of(new byte[] {1}));
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
@@ -143,7 +148,9 @@ class HttpClientCallObserverTest {
                     throw new IllegalStateException("headers observer broke");
                 })
                 .build()) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/user")));
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(IllegalStateException.class);
         }
@@ -171,8 +178,9 @@ class HttpClientCallObserverTest {
                     throw new IllegalStateException("headers observer broke");
                 })
                 .build()) {
-            final Throwable thrown =
-                    catchThrowable(() -> client.stream(HttpCall.get("/zip"), HttpStreamResponse::statusCode));
+            final var call = HttpCall.get("/zip");
+
+            final Throwable thrown = catchThrowable(() -> client.stream(call, HttpStreamResponse::statusCode));
 
             assertThat(thrown).isInstanceOf(IllegalStateException.class);
         }
@@ -199,8 +207,9 @@ class HttpClientCallObserverTest {
     @Test
     void execute_shouldNotReport_whenRequestIsRejectedBeforeTheTransport() {
         try (HttpClient client = client(events::add)) {
-            final Throwable thrown =
-                    catchThrowable(() -> client.execute(HttpCall.get(URI.create("https://other.example.test/x"))));
+            final var call = HttpCall.get(URI.create("https://other.example.test/x"));
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
         }
@@ -235,8 +244,9 @@ class HttpClientCallObserverTest {
         when(transport.stream(any())).thenThrow(refused);
 
         try (HttpClient client = client(events::add)) {
-            final Throwable thrown =
-                    catchThrowable(() -> client.stream(HttpCall.get("/zip"), HttpStreamResponse::statusCode));
+            final var call = HttpCall.get("/zip");
+
+            final Throwable thrown = catchThrowable(() -> client.stream(call, HttpStreamResponse::statusCode));
 
             assertThat(thrown).isSameAs(refused);
         }

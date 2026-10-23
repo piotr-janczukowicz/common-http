@@ -650,8 +650,9 @@ class RetryPolicyTest {
         final HttpResponse unavailable =
                 HttpResponses.of(HttpStatus.SERVICE_UNAVAILABLE.code(), Map.of(RETRY_AFTER, List.of(retryAfter)), null);
 
-        final Throwable thrown =
-                catchThrowable(() -> policy(RetryConfiguration.defaults()).serverErrorDelay(GET, unavailable, 1));
+        final var policy = policy(RetryConfiguration.defaults());
+
+        final Throwable thrown = catchThrowable(() -> policy.serverErrorDelay(GET, unavailable, 1));
 
         assertThat(thrown).isNull();
     }
@@ -680,8 +681,9 @@ class RetryPolicyTest {
         final HttpResponse limited =
                 HttpResponses.of(HttpStatus.TOO_MANY_REQUESTS.code(), Map.of(RETRY_AFTER, List.of(retryAfter)), null);
 
-        final Throwable thrown =
-                catchThrowable(() -> rateLimitDelay(policy(RetryConfiguration.defaults()), limited, 1));
+        final var policy = policy(RetryConfiguration.defaults());
+
+        final Throwable thrown = catchThrowable(() -> rateLimitDelay(policy, limited, 1));
 
         assertThat(thrown).isNull();
     }
@@ -861,15 +863,19 @@ class RetryPolicyTest {
 
     @Test
     void constructor_shouldThrow_whenClockIsNull() {
-        final Throwable thrown = catchThrowable(() -> new RetryPolicy(RetryConfiguration.defaults(), null));
+        final var config = RetryConfiguration.defaults();
+
+        final Throwable thrown = catchThrowable(() -> new RetryPolicy(config, null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("clock");
     }
 
     @Test
     void constructor_shouldThrow_whenRandomIsNull() {
-        final Throwable thrown =
-                catchThrowable(() -> new RetryPolicy(RetryConfiguration.defaults(), Clock.systemUTC(), null));
+        final var config = RetryConfiguration.defaults();
+        final var clock = Clock.systemUTC();
+
+        final Throwable thrown = catchThrowable(() -> new RetryPolicy(config, clock, null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("random");
     }

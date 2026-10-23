@@ -522,7 +522,9 @@ class HttpHeadersTest {
         final HttpHeaders base = HttpHeaders.of("A", "1");
         final HttpHeaders[] more = null;
 
-        final Throwable thrown = catchThrowable(() -> base.merge(HttpHeaders.empty(), more));
+        final var headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> base.merge(headers, more));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("more");
     }
@@ -532,7 +534,9 @@ class HttpHeadersTest {
         final HttpHeaders base = HttpHeaders.of("A", "1");
         final HttpHeaders later = null;
 
-        final Throwable thrown = catchThrowable(() -> base.merge(HttpHeaders.empty(), later));
+        final var headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> base.merge(headers, later));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("headers");
     }
@@ -553,7 +557,9 @@ class HttpHeadersTest {
     void merge_shouldThrow_whenEmptyRequestHeadersGetForbiddenResponseEntry() {
         final HttpHeaders response = HttpHeaders.fromWire(Map.of("Content-Length", List.of("5")));
 
-        final Throwable thrown = catchThrowable(() -> HttpHeaders.empty().merge(response));
+        final var headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> headers.merge(response));
 
         assertThat(thrown)
                 .isInstanceOf(IllegalArgumentException.class)

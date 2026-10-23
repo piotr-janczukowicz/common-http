@@ -68,7 +68,9 @@ class HttpClientAuthRenewalTest {
         when(transport.execute(any())).thenReturn(unauthorized());
 
         try (HttpClient client = client(true)) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/user")));
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
@@ -81,7 +83,9 @@ class HttpClientAuthRenewalTest {
         when(transport.execute(any())).thenReturn(unauthorized());
 
         try (HttpClient client = client(false)) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/user")));
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
@@ -100,7 +104,9 @@ class HttpClientAuthRenewalTest {
                 .thenReturn(unauthorized());
 
         try (HttpClient client = client(true)) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/file")));
+            final var call = HttpCall.get("/file");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
@@ -179,7 +185,9 @@ class HttpClientAuthRenewalTest {
                 .thenReturn(new HttpResponse(HttpStatus.FORBIDDEN.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (HttpClient client = client(true)) {
-            final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get("/user")));
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown).isInstanceOf(HttpException.class);
         }
@@ -268,8 +276,9 @@ class HttpClientAuthRenewalTest {
                         transport, HttpClientConfiguration.builder(BASE).build())
                 .auth(failing)
                 .build()) {
-            final Throwable thrown =
-                    catchThrowable(() -> client.stream(HttpCall.get("/zip"), HttpStreamResponse::statusCode));
+            final var call = HttpCall.get("/zip");
+
+            final Throwable thrown = catchThrowable(() -> client.stream(call, HttpStreamResponse::statusCode));
 
             assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessage("auth failed");
         }
@@ -305,7 +314,7 @@ class HttpClientAuthRenewalTest {
         verify(transport, times(2)).execute(sent.capture());
         assertSoftly(softly -> {
             softly.assertThat(rejectedTokens).containsExactly("token-0");
-            softly.assertThat(sent.getAllValues().get(0).headers().get(AUTHORIZATION))
+            softly.assertThat(sent.getAllValues().getFirst().headers().get(AUTHORIZATION))
                     .contains("Bearer token-0");
             softly.assertThat(sent.getAllValues().get(1).headers().get(AUTHORIZATION))
                     .contains("Bearer token-1");
@@ -322,7 +331,9 @@ class HttpClientAuthRenewalTest {
                         transport, HttpClientConfiguration.builder(BASE).build())
                 .auth(auth)
                 .build()) {
-            thrown = catchThrowable(() -> client.execute(HttpCall.get("/user")));
+            final var call = HttpCall.get("/user");
+
+            thrown = catchThrowable(() -> client.execute(call));
         }
 
         assertThat(thrown).isInstanceOf(HttpException.class);
@@ -359,7 +370,11 @@ class HttpClientAuthRenewalTest {
     @Test
     void execute_shouldThrowRenewalFailureWithThe401Attached_whenRenewingCredentialsFails() throws IOException {
         when(transport.execute(any())).thenReturn(unauthorized());
-        final Throwable thrown = catchThrowable(() -> failingRenewalClient().execute(HttpCall.get("/user")));
+        final HttpClient client = failingRenewalClient();
+
+        final var call = HttpCall.get("/user");
+
+        final Throwable thrown = catchThrowable(() -> client.execute(call));
 
         assertSoftly(softly -> {
             softly.assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessage("token unavailable");
@@ -371,8 +386,11 @@ class HttpClientAuthRenewalTest {
     @Test
     void stream_shouldThrowRenewalFailureWithThe401Attached_whenRenewingCredentialsFails() throws IOException {
         when(transport.stream(any())).thenReturn(HttpStreamResponse.buffered(unauthorized()));
-        final Throwable thrown = catchThrowable(
-                () -> failingRenewalClient().stream(HttpCall.get("/zip"), HttpStreamResponse::statusCode));
+        final HttpClient client = failingRenewalClient();
+
+        final var call = HttpCall.get("/zip");
+
+        final Throwable thrown = catchThrowable(() -> client.stream(call, HttpStreamResponse::statusCode));
 
         assertSoftly(softly -> {
             softly.assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessage("token unavailable");

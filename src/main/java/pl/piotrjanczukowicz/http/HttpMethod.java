@@ -18,4 +18,13 @@ public enum HttpMethod {
     public boolean isEmptyBodySentWhenAbsent() {
         return this == POST || this == PUT || this == PATCH;
     }
+
+    /**
+     * Whether a request of this method cannot carry a body (GET, HEAD).
+     *
+     * @return {@code true} if a body is refused
+     */
+    public boolean isBodyless() {
+        return this == GET || this == HEAD;
+    }
 }

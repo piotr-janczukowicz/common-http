@@ -37,7 +37,9 @@ class ParsedUrlTest {
 
     @Test
     void of_shouldThrow_whenUriIsNotAbsoluteHttp() {
-        final Throwable thrown = catchThrowable(() -> ParsedUrl.of(URI.create("mailto:dev@example.com")));
+        final var uri = URI.create("mailto:dev@example.com");
+
+        final Throwable thrown = catchThrowable(() -> ParsedUrl.of(uri));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("uri");
     }
@@ -57,7 +59,9 @@ class ParsedUrlTest {
     void resolveApi_shouldThrowIllegalArgument_whenPathIsNotHttpReference() {
         final ParsedUrl base = ParsedUrl.of(URI.create("https://api.example.test/"));
 
-        final Throwable thrown = catchThrowable(() -> base.resolveApi("mailto:x", Map.of()));
+        final Map<String, List<String>> query = Map.of();
+
+        final Throwable thrown = catchThrowable(() -> base.resolveApi("mailto:x", query));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("path");
     }

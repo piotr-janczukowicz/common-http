@@ -81,8 +81,10 @@ class RedirectExecutorTest {
                 method, URI.create("https://api.example.test/start?code=secret"), headers(), HttpBody.of(new byte[] {1
                 }));
 
-        final Throwable thrown = catchThrowable(
-                () -> follower().execute(request, RedirectPolicy.defaults().maxHops(), true));
+        final RedirectExecutor follower = follower();
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown).isInstanceOf(HttpException.class);
         final HttpException error = (HttpException) thrown;
@@ -308,10 +310,10 @@ class RedirectExecutorTest {
                 URI.create("https://host.example.test/api/uploads/a"),
                 headers(),
                 HttpBody.of(new byte[] {1}));
+        final RedirectExecutor follower = follower(ParsedUrl.of(URI.create("https://host.example.test/svc/v1/")));
+        final int maxHops = RedirectPolicy.defaults().maxHops();
 
-        final Throwable thrown =
-                catchThrowable(() -> follower(ParsedUrl.of(URI.create("https://host.example.test/svc/v1/")))
-                        .execute(request, RedirectPolicy.defaults().maxHops(), true));
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown)
                 .isInstanceOf(HttpException.class)
@@ -342,10 +344,10 @@ class RedirectExecutorTest {
                 URI.create("https://host.example.test/svc/v1/user"),
                 headers(),
                 HttpBody.of(new byte[] {1}));
+        final RedirectExecutor follower = follower(ParsedUrl.of(URI.create("https://host.example.test/svc/v1/")));
+        final int maxHops = RedirectPolicy.defaults().maxHops();
 
-        final Throwable thrown =
-                catchThrowable(() -> follower(ParsedUrl.of(URI.create("https://host.example.test/svc/v1/")))
-                        .execute(request, RedirectPolicy.defaults().maxHops(), true));
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown)
                 .isInstanceOf(HttpException.class)
@@ -372,11 +374,11 @@ class RedirectExecutorTest {
     void execute_shouldRefuse_whenHttpsRedirectsToHttp() throws IOException {
         when(transport.execute(any())).thenReturn(redirect(HttpStatus.FOUND, "http://api.example.test/user"));
 
-        final Throwable thrown = catchThrowable(() -> follower()
-                .execute(
-                        get("https://api.example.test/user"),
-                        RedirectPolicy.defaults().maxHops(),
-                        true));
+        final RedirectExecutor follower = follower();
+        final HttpRequest request = get("https://api.example.test/user");
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown).isInstanceOf(HttpException.class).hasMessage("https to http redirect is not followed");
         verify(transport, times(1)).execute(any());
@@ -388,8 +390,10 @@ class RedirectExecutorTest {
         final HttpRequest request = new HttpRequest(
                 HttpMethod.POST, URI.create("https://api.example.test/user"), headers(), HttpBody.of(new byte[] {1}));
 
-        final Throwable thrown = catchThrowable(
-                () -> follower().execute(request, RedirectPolicy.defaults().maxHops(), true));
+        final RedirectExecutor follower = follower();
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown).isInstanceOf(HttpException.class).hasMessage("cross-origin redirect not followed for POST");
         verify(transport, times(1)).execute(any());
@@ -399,11 +403,11 @@ class RedirectExecutorTest {
     void execute_shouldThrow_whenHopLimitExceeded() throws IOException {
         when(transport.execute(any())).thenReturn(redirect(HttpStatus.FOUND, "https://api.example.test/next"));
 
-        final Throwable thrown = catchThrowable(() -> follower()
-                .execute(
-                        get("https://api.example.test/start"),
-                        RedirectPolicy.defaults().maxHops(),
-                        true));
+        final RedirectExecutor follower = follower();
+        final HttpRequest request = get("https://api.example.test/start");
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown).isInstanceOf(HttpException.class).hasMessageContaining("hop limit");
         verify(transport, times(RedirectPolicy.defaults().maxHops() + 1)).execute(any());
@@ -428,7 +432,9 @@ class RedirectExecutorTest {
         final RedirectExecutor.Exchange exchange =
                 new RedirectExecutor.Exchange(ok(), ParsedUrl.of(URI.create("https://api.example.test/user")), false);
 
-        final Throwable thrown = catchThrowable(() -> follower().requireRedirectLocation(exchange, HttpMethod.GET));
+        final RedirectExecutor follower = follower();
+
+        final Throwable thrown = catchThrowable(() -> follower.requireRedirectLocation(exchange, HttpMethod.GET));
 
         assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessage("response is not a redirect");
     }
@@ -475,8 +481,10 @@ class RedirectExecutorTest {
                 .thenReturn(redirect(HttpStatus.FOUND, "http://user:pw@api.example.test/user?token=signed#frag"));
         final HttpRequest request = get("https://api.example.test/user?code=secret");
 
-        final Throwable thrown = catchThrowable(
-                () -> follower().execute(request, RedirectPolicy.defaults().maxHops(), true));
+        final RedirectExecutor follower = follower();
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         final HttpException error = (HttpException) thrown;
         assertSoftly(softly -> {
@@ -490,11 +498,11 @@ class RedirectExecutorTest {
     void execute_shouldReportLocationWithoutQuery_whenSchemeIsUnsupported() throws IOException {
         when(transport.execute(any())).thenReturn(redirect(HttpStatus.FOUND, "ftp://files.example/a/b?token=signed"));
 
-        final Throwable thrown = catchThrowable(() -> follower()
-                .execute(
-                        get("https://api.example.test/user"),
-                        RedirectPolicy.defaults().maxHops(),
-                        true));
+        final RedirectExecutor follower = follower();
+        final HttpRequest request = get("https://api.example.test/user");
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown)
                 .isInstanceOf(HttpException.class)
@@ -507,11 +515,11 @@ class RedirectExecutorTest {
     void execute_shouldOmitLocation_whenLocationCannotBeParsed() throws IOException {
         when(transport.execute(any())).thenReturn(redirect(HttpStatus.FOUND, "http://[bad?token=signed"));
 
-        final Throwable thrown = catchThrowable(() -> follower()
-                .execute(
-                        get("https://api.example.test/user"),
-                        RedirectPolicy.defaults().maxHops(),
-                        true));
+        final RedirectExecutor follower = follower();
+        final HttpRequest request = get("https://api.example.test/user");
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown)
                 .isInstanceOf(HttpException.class)
@@ -639,8 +647,10 @@ class RedirectExecutorTest {
         final HttpRequest request = new HttpRequest(
                 HttpMethod.POST, URI.create("https://api.example.test/start"), headers(), HttpBody.of(new byte[] {1}));
 
-        final Throwable thrown = catchThrowable(
-                () -> follower().stream(request, RedirectPolicy.defaults().maxHops(), true));
+        final RedirectExecutor follower = follower();
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.stream(request, maxHops, true));
 
         assertThat(thrown).isInstanceOf(HttpException.class).hasMessageContaining("would be sent as GET");
         verify(transport, times(1)).stream(any());
@@ -740,8 +750,10 @@ class RedirectExecutorTest {
                 headers(),
                 HttpBody.of(new byte[] {1}));
 
-        final Throwable thrown = catchThrowable(
-                () -> follower().execute(request, RedirectPolicy.defaults().maxHops(), true));
+        final RedirectExecutor follower = follower();
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown).isInstanceOf(HttpException.class);
         assertThat(thrown.getMessage()).doesNotContain("token").doesNotContain("secret");
@@ -754,8 +766,10 @@ class RedirectExecutorTest {
                 HttpMethod.POST, URI.create("https://my_host/start?code=secret"), headers(), HttpBody.of(new byte[] {1
                 }));
 
-        final Throwable thrown = catchThrowable(
-                () -> follower().execute(request, RedirectPolicy.defaults().maxHops(), true));
+        final RedirectExecutor follower = follower();
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
 
         assertThat(thrown).isInstanceOf(HttpException.class);
         assertThat(thrown.getMessage()).doesNotContain("token").doesNotContain("secret");

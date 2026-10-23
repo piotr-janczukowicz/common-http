@@ -79,7 +79,11 @@ class HttpNetworkConfigurationTest {
                 .certificatePin("a.example", PIN_A)
                 .build();
 
-        final Throwable thrown = catchThrowable(() -> config.certificatePins().put("b.example", Set.of(PIN_B)));
+        final var certificatePins = config.certificatePins();
+
+        final Set<String> pins = Set.of(PIN_B);
+
+        final Throwable thrown = catchThrowable(() -> certificatePins.put("b.example", pins));
 
         assertThat(thrown).isInstanceOf(UnsupportedOperationException.class);
     }
@@ -96,60 +100,123 @@ class HttpNetworkConfigurationTest {
     }
 
     @Test
-    void certificatePin_shouldReject_whenArgumentsAreInvalid() {
+    void certificatePin_shouldReject_whenHostIsBlank() {
+        final HttpNetworkConfiguration.Builder builder = HttpNetworkConfiguration.builder();
+        final String host = " ";
+
+        final Throwable thrown = catchThrowable(() -> builder.certificatePin(host, PIN_A));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void certificatePin_shouldReject_whenPinsAreMissing() {
         final HttpNetworkConfiguration.Builder builder = HttpNetworkConfiguration.builder();
 
-        assertSoftly(softly -> {
-            softly.assertThat(catchThrowable(() -> builder.certificatePin(" ", PIN_A)))
-                    .isInstanceOf(IllegalArgumentException.class);
-            softly.assertThat(catchThrowable(() -> builder.certificatePin("a.example")))
-                    .isInstanceOf(IllegalArgumentException.class);
-            softly.assertThat(catchThrowable(() -> builder.certificatePin("a.example", (String[]) null)))
-                    .isInstanceOf(NullPointerException.class);
-            softly.assertThat(catchThrowable(() -> builder.certificatePin("a.example", (String) null)))
-                    .isInstanceOf(NullPointerException.class);
-        });
+        final Throwable thrown = catchThrowable(() -> builder.certificatePin("a.example"));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void constructor_shouldReject_whenPinMapsAreInvalid() {
-        assertSoftly(softly -> {
-            softly.assertThat(catchThrowable(
-                            () -> new HttpNetworkConfiguration(null, null, Map.of(" ", Set.of(PIN_A)), null)))
-                    .isInstanceOf(IllegalArgumentException.class);
-            softly.assertThat(
-                            catchThrowable(() -> new HttpNetworkConfiguration(null, null, Map.of("a", Set.of()), null)))
-                    .isInstanceOf(IllegalArgumentException.class);
-            softly.assertThat(catchThrowable(() -> new HttpNetworkConfiguration(null, null, null, null)))
-                    .isInstanceOf(NullPointerException.class);
-        });
-    }
-
-    @Test
-    void builder_shouldReject_whenSettingsAreNull() {
+    void certificatePin_shouldReject_whenPinArrayIsNull() {
         final HttpNetworkConfiguration.Builder builder = HttpNetworkConfiguration.builder();
+        final String[] pins = null;
 
-        assertSoftly(softly -> {
-            softly.assertThat(catchThrowable(() -> builder.proxy(null))).isInstanceOf(NullPointerException.class);
-            softly.assertThat(catchThrowable(() -> builder.tls(null))).isInstanceOf(NullPointerException.class);
-            softly.assertThat(catchThrowable(() -> builder.hostResolver(null)))
-                    .isInstanceOf(NullPointerException.class);
-        });
+        final Throwable thrown = catchThrowable(() -> builder.certificatePin("a.example", pins));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 
     @Test
-    void httpTls_shouldReject_whenArgumentsAreNull() throws Exception {
+    void certificatePin_shouldReject_whenPinIsNull() {
+        final HttpNetworkConfiguration.Builder builder = HttpNetworkConfiguration.builder();
+        final String pin = null;
+
+        final Throwable thrown = catchThrowable(() -> builder.certificatePin("a.example", pin));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void constructor_shouldReject_whenPinHostIsBlank() {
+        final Map<String, Set<String>> pins = Map.of(" ", Set.of(PIN_A));
+
+        final Throwable thrown = catchThrowable(() -> new HttpNetworkConfiguration(null, null, pins, null));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void constructor_shouldReject_whenPinSetIsEmpty() {
+        final Map<String, Set<String>> pins = Map.of("a", Set.of());
+
+        final Throwable thrown = catchThrowable(() -> new HttpNetworkConfiguration(null, null, pins, null));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void constructor_shouldReject_whenPinsAreNull() {
+        final Map<String, Set<String>> pins = null;
+
+        final Throwable thrown = catchThrowable(() -> new HttpNetworkConfiguration(null, null, pins, null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void builder_shouldReject_whenProxyIsNull() {
+        final HttpNetworkConfiguration.Builder builder = HttpNetworkConfiguration.builder();
+        final HttpProxy proxy = null;
+
+        final Throwable thrown = catchThrowable(() -> builder.proxy(proxy));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void builder_shouldReject_whenTlsIsNull() {
+        final HttpNetworkConfiguration.Builder builder = HttpNetworkConfiguration.builder();
+        final HttpTls tls = null;
+
+        final Throwable thrown = catchThrowable(() -> builder.tls(tls));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void builder_shouldReject_whenHostResolverIsNull() {
+        final HttpNetworkConfiguration.Builder builder = HttpNetworkConfiguration.builder();
+        final HostResolver resolver = null;
+
+        final Throwable thrown = catchThrowable(() -> builder.hostResolver(resolver));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void httpTls_shouldReject_whenContextIsNull() {
+        final SSLContext context = null;
+        final X509TrustManager trust = new TrustNothing();
+
+        final Throwable thrown = catchThrowable(() -> HttpTls.of(context, trust));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void httpTls_shouldReject_whenTrustManagerIsNull() throws Exception {
         final SSLContext context = SSLContext.getDefault();
+        final X509TrustManager trust = null;
 
-        assertSoftly(softly -> {
-            softly.assertThat(catchThrowable(() -> HttpTls.of(null, new TrustNothing())))
-                    .isInstanceOf(NullPointerException.class);
-            softly.assertThat(catchThrowable(() -> HttpTls.of(context, null))).isInstanceOf(NullPointerException.class);
-        });
+        final Throwable thrown = catchThrowable(() -> HttpTls.of(context, trust));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 
     @Test
-    void transportConfiguration_shouldDefaultToNoNetworkSettings_whenNetworkIsUnsetOrNull() {
+    void transportConfiguration_shouldDefaultToNoNetworkSettings_whenNetworkIsUnset() {
         assertSoftly(softly -> {
             softly.assertThat(HttpTransportConfiguration.defaults().network())
                     .isEqualTo(HttpNetworkConfiguration.none());
@@ -161,10 +228,17 @@ class HttpNetworkConfigurationTest {
                             .network()
                             .certificatePins())
                     .containsKey("a.example");
-            softly.assertThat(catchThrowable(() ->
-                            HttpTransportConfiguration.builder().network(null).build()))
-                    .isInstanceOf(NullPointerException.class);
         });
+    }
+
+    @Test
+    void transportConfiguration_shouldReject_whenNetworkIsNull() {
+        final HttpTransportConfiguration.Builder builder =
+                HttpTransportConfiguration.builder().network(null);
+
+        final Throwable thrown = catchThrowable(builder::build);
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class);
     }
 
     private static final class TrustNothing implements X509TrustManager {

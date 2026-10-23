@@ -49,15 +49,18 @@ class HttpRequestTest {
 
     @Test
     void constructor_shouldThrow_whenMethodIsNull() {
-        final Throwable thrown = catchThrowable(() -> new HttpRequest(null, API_URI, HttpHeaders.empty(), null));
+        final var headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> new HttpRequest(null, API_URI, headers, null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("method");
     }
 
     @Test
     void constructor_shouldThrow_whenUriIsNull() {
-        final Throwable thrown =
-                catchThrowable(() -> new HttpRequest(HttpMethod.GET, (URI) null, HttpHeaders.empty(), null));
+        final var headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> new HttpRequest(HttpMethod.GET, (URI) null, headers, null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("uri");
     }
@@ -112,8 +115,10 @@ class HttpRequestTest {
 
     @Test
     void constructor_shouldThrow_whenCredentialIdIsBlank() {
-        final Throwable thrown = catchThrowable(
-                () -> new HttpRequest(HttpMethod.GET, ParsedUrl.of(API_URI), HttpHeaders.empty(), null, " "));
+        final var url = ParsedUrl.of(API_URI);
+        final var headers = HttpHeaders.empty();
+
+        final Throwable thrown = catchThrowable(() -> new HttpRequest(HttpMethod.GET, url, headers, null, " "));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("credentialId");
     }
@@ -138,8 +143,10 @@ class HttpRequestTest {
             value = HttpMethod.class,
             names = {"GET", "HEAD"})
     void constructor_shouldThrow_whenGetOrHeadHasBody(final HttpMethod method) {
-        final Throwable thrown = catchThrowable(
-                () -> new HttpRequest(method, API_URI, HttpHeaders.empty(), HttpBody.of(new byte[] {1})));
+        final var headers = HttpHeaders.empty();
+        final var body = HttpBody.of(new byte[] {1});
+
+        final Throwable thrown = catchThrowable(() -> new HttpRequest(method, API_URI, headers, body));
 
         assertThat(thrown)
                 .isInstanceOf(IllegalArgumentException.class)

@@ -452,8 +452,9 @@ class RetryingHttpTransportTest {
 
     @Test
     void constructor_shouldThrow_whenSleeperIsNull() {
-        final Throwable thrown =
-                catchThrowable(() -> new RetryingHttpTransport(delegate, RetryConfiguration.defaults(), null));
+        final var config = RetryConfiguration.defaults();
+
+        final Throwable thrown = catchThrowable(() -> new RetryingHttpTransport(delegate, config, null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("sleeper");
     }

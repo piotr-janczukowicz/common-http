@@ -205,7 +205,7 @@ class HttpBodyTest {
     }
 
     @Test
-    void ofStream_shouldThrowUncheckedIo_whenStreamFails() {
+    void ofStream_shouldThrowUncheckedIo_whenStreamFails() throws IOException {
         final HttpBody body = HttpBody.ofStream(
                 () -> new InputStream() {
                     @Override
@@ -215,7 +215,9 @@ class HttpBodyTest {
                 },
                 1);
 
-        final Throwable thrown = catchThrowable(() -> body.openStream().readAllBytes());
+        final var openStream = body.openStream();
+
+        final Throwable thrown = catchThrowable(() -> openStream.readAllBytes());
 
         assertThat(thrown).isInstanceOf(IOException.class);
     }

@@ -94,7 +94,9 @@ class AbstractHttpCallerTest {
             final HttpCall call =
                     HttpCall.of(HttpMethod.GET, URI.create("https://api.example.test/user/42?token=secret#frag"));
 
-            final Throwable thrown = catchThrowable(() -> caller(client).fetch(call, User.class));
+            final HttpClientCaller caller = caller(client);
+
+            final Throwable thrown = catchThrowable(() -> caller.fetch(call, User.class));
 
             assertThat(thrown)
                     .isInstanceOf(HttpEmptyResponseException.class)
@@ -109,7 +111,9 @@ class AbstractHttpCallerTest {
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.of(HttpMethod.DELETE, "/user/42");
 
-            final Throwable thrown = catchThrowable(() -> caller(client).fetch(call, User.class));
+            final HttpClientCaller caller = caller(client);
+
+            final Throwable thrown = catchThrowable(() -> caller.fetch(call, User.class));
 
             assertThat(thrown)
                     .isInstanceOf(HttpEmptyResponseException.class)
@@ -126,7 +130,9 @@ class AbstractHttpCallerTest {
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.get("/user/42").withQuery(Map.of("token", "secret"));
 
-            final Throwable thrown = catchThrowable(() -> caller(client).fetch(call, User.class));
+            final HttpClientCaller caller = caller(client);
+
+            final Throwable thrown = catchThrowable(() -> caller.fetch(call, User.class));
 
             assertThat(((HttpEmptyResponseException) thrown).uri())
                     .contains(URI.create("https://api.example.test/user/42"));
@@ -140,7 +146,9 @@ class AbstractHttpCallerTest {
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.of(HttpMethod.GET, "/user");
 
-            final Throwable thrown = catchThrowable(() -> caller(client).fetch(call, User.class));
+            final HttpClientCaller caller = caller(client);
+
+            final Throwable thrown = catchThrowable(() -> caller.fetch(call, User.class));
 
             assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessageContaining("null");
         }
@@ -183,8 +191,12 @@ class AbstractHttpCallerTest {
     @Test
     void fetchByStatus_shouldThrow_whenByStatusHoldsRedirectStatus() throws IOException {
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(() -> caller(client)
-                    .fetchByStatus(HttpCall.get("/x"), body -> "other", Map.of(HttpStatus.FOUND, body -> "found")));
+            final HttpClientCaller caller = caller(client);
+
+            final var call = HttpCall.get("/x");
+
+            final Throwable thrown = catchThrowable(
+                    () -> caller.fetchByStatus(call, body -> "other", Map.of(HttpStatus.FOUND, body -> "found")));
 
             assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("redirect");
             verify(transport, never()).execute(any());
@@ -198,7 +210,9 @@ class AbstractHttpCallerTest {
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.of(HttpMethod.GET, URI.create("https://api.example.test/x"));
 
-            final Throwable thrown = catchThrowable(() -> caller(client).fetchOrEmpty(call, User.class));
+            final HttpClientCaller caller = caller(client);
+
+            final Throwable thrown = catchThrowable(() -> caller.fetchOrEmpty(call, User.class));
 
             assertThat(thrown)
                     .isInstanceOf(HttpEmptyResponseException.class)
@@ -214,7 +228,9 @@ class AbstractHttpCallerTest {
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.of(HttpMethod.GET, URI.create("https://api.example.test/u?t=secret"));
 
-            final Throwable thrown = catchThrowable(() -> caller(client).fetchOrEmpty(call, User.class));
+            final HttpClientCaller caller = caller(client);
+
+            final Throwable thrown = catchThrowable(() -> caller.fetchOrEmpty(call, User.class));
 
             assertThat(thrown)
                     .isInstanceOf(HttpEmptyResponseException.class)
@@ -476,11 +492,11 @@ class AbstractHttpCallerTest {
 
         final Throwable thrown;
         try (final HttpClient client = client()) {
-            thrown = catchThrowable(() -> caller(client)
-                    .fetchByStatus(
-                            HttpCall.post("/user"),
-                            body -> body.as(User.class),
-                            Map.of(HttpStatus.NO_CONTENT, body -> body.as(User.class))));
+            final HttpClientCaller caller = caller(client);
+            final var call = HttpCall.post("/user");
+
+            thrown = catchThrowable(() -> caller.fetchByStatus(
+                    call, body -> body.as(User.class), Map.of(HttpStatus.NO_CONTENT, body -> body.as(User.class))));
         }
 
         assertThat(thrown)
@@ -495,11 +511,11 @@ class AbstractHttpCallerTest {
 
         final Throwable thrown;
         try (final HttpClient client = client()) {
-            thrown = catchThrowable(() -> caller(client)
-                    .fetchByStatus(
-                            HttpCall.get("/users"),
-                            body -> body.as(USERS),
-                            Map.of(HttpStatus.NO_CONTENT, body -> body.as(USERS))));
+            final HttpClientCaller caller = caller(client);
+            final var call = HttpCall.get("/users");
+
+            thrown = catchThrowable(() -> caller.fetchByStatus(
+                    call, body -> body.as(USERS), Map.of(HttpStatus.NO_CONTENT, body -> body.as(USERS))));
         }
 
         assertThat(thrown).isInstanceOf(HttpEmptyResponseException.class).hasMessageContaining("204");
@@ -514,7 +530,10 @@ class AbstractHttpCallerTest {
         final Throwable thrown;
         final boolean isFlagRestored;
         try (final HttpClient client = client()) {
-            thrown = catchThrowable(() -> caller(client).fetchWhenReady(HttpCall.get("/user"), User.class, slow));
+            final HttpClientCaller caller = caller(client);
+            final var call = HttpCall.get("/user");
+
+            thrown = catchThrowable(() -> caller.fetchWhenReady(call, User.class, slow));
             isFlagRestored = Thread.currentThread().isInterrupted();
         } finally {
             Thread.interrupted();
@@ -569,7 +588,10 @@ class AbstractHttpCallerTest {
 
         final Throwable thrown;
         try (final HttpClient client = client()) {
-            thrown = catchThrowable(() -> caller(client).download(HttpCall.get("/zip"), target));
+            final HttpClientCaller caller = caller(client);
+            final var call = HttpCall.get("/zip");
+
+            thrown = catchThrowable(() -> caller.download(call, target));
         }
 
         assertThat(thrown).isInstanceOf(HttpException.class);
@@ -707,8 +729,11 @@ class AbstractHttpCallerTest {
         when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), body));
 
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(
-                    () -> caller(client).fetchUnless(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND));
+            final HttpClientCaller caller = caller(client);
+
+            final var call = HttpCall.get("/users");
+
+            final Throwable thrown = catchThrowable(() -> caller.fetchUnless(call, USERS, HttpStatus.NOT_FOUND));
 
             assertThat(thrown).isInstanceOf(JsonDecodeException.class);
         }
@@ -765,8 +790,11 @@ class AbstractHttpCallerTest {
         when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), "   "));
 
         try (final HttpClient client = client()) {
-            final Throwable thrown = catchThrowable(
-                    () -> caller(client).fetchUnless(HttpCall.get("/user"), User.class, HttpStatus.NOT_FOUND));
+            final HttpClientCaller caller = caller(client);
+
+            final var call = HttpCall.get("/user");
+
+            final Throwable thrown = catchThrowable(() -> caller.fetchUnless(call, User.class, HttpStatus.NOT_FOUND));
 
             assertThat(thrown).isInstanceOf(JsonDecodeException.class);
         }

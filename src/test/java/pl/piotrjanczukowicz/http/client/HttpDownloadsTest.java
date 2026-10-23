@@ -43,8 +43,9 @@ class HttpDownloadsTest {
     void toFile_shouldThrowAndKeepDirectory_whenTargetIsAnEmptyDirectory() throws IOException {
         final Path target = Files.createDirectory(tempDir.resolve("out"));
 
-        final Throwable thrown =
-                catchThrowable(() -> HttpDownloads.toFile(new ByteArrayInputStream(new byte[] {1}), target));
+        final var stream = new ByteArrayInputStream(new byte[] {1});
+
+        final Throwable thrown = catchThrowable(() -> HttpDownloads.toFile(stream, target));
 
         assertThat(thrown).isInstanceOf(FileAlreadyExistsException.class).hasMessageContaining("target is a directory");
         assertThat(target).isDirectory();
@@ -100,8 +101,10 @@ class HttpDownloadsTest {
             throw moveFailure;
         };
 
-        final Throwable thrown = catchThrowable(() -> HttpDownloads.toFile(
-                new ByteArrayInputStream(new byte[] {1}), target, nonEmptyDirectoryInPlaceOfTemporaryFile));
+        final var stream = new ByteArrayInputStream(new byte[] {1});
+
+        final Throwable thrown =
+                catchThrowable(() -> HttpDownloads.toFile(stream, target, nonEmptyDirectoryInPlaceOfTemporaryFile));
 
         assertThat(thrown).isSameAs(moveFailure);
         assertThat(thrown.getSuppressed()).singleElement().isInstanceOf(IOException.class);
@@ -161,7 +164,9 @@ class HttpDownloadsTest {
     void toFile_shouldThrow_whenTargetIsFileSystemRoot() {
         final Path root = tempDir.toAbsolutePath().getRoot();
 
-        final Throwable thrown = catchThrowable(() -> HttpDownloads.toFile(InputStream.nullInputStream(), root));
+        final var nullInputStream = InputStream.nullInputStream();
+
+        final Throwable thrown = catchThrowable(() -> HttpDownloads.toFile(nullInputStream, root));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }

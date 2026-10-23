@@ -151,21 +151,15 @@ class HttpTransportConfigurationTest {
         assertThat(config.maxIdleConnections()).isEqualTo(HttpTransportConfiguration.DEFAULT_MAX_IDLE_CONNECTIONS);
     }
 
-    @Test
-    void build_shouldThrow_whenMaxSlotWaitNotPositive() {
-        final HttpTransportConfiguration.Builder zero =
-                HttpTransportConfiguration.builder().maxSlotWait(Duration.ZERO);
-        final HttpTransportConfiguration.Builder negative =
-                HttpTransportConfiguration.builder().maxSlotWait(Duration.ofSeconds(-1));
+    @ParameterizedTest
+    @ValueSource(longs = {0, -1})
+    void build_shouldThrow_whenMaxSlotWaitNotPositive(final long seconds) {
+        final HttpTransportConfiguration.Builder builder =
+                HttpTransportConfiguration.builder().maxSlotWait(Duration.ofSeconds(seconds));
 
-        assertSoftly(softly -> {
-            softly.assertThat(catchThrowable(zero::build))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("maxSlotWait");
-            softly.assertThat(catchThrowable(negative::build))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("maxSlotWait");
-        });
+        final Throwable thrown = catchThrowable(builder::build);
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxSlotWait");
     }
 
     @ParameterizedTest

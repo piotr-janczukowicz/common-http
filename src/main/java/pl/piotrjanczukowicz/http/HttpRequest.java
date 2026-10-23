@@ -80,7 +80,7 @@ public record HttpRequest(
             requireNotBlank(credentialId, "credentialId");
         }
         this.credentialId = credentialId;
-        if ((this.method == HttpMethod.GET || this.method == HttpMethod.HEAD) && !this.body.isAbsent()) {
+        if (this.method.isBodyless() && !this.body.isAbsent()) {
             throw new IllegalArgumentException(this.method + " request must not have a body");
         }
     }

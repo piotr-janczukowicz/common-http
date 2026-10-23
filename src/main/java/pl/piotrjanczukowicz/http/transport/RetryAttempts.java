@@ -67,13 +67,17 @@ final class RetryAttempts {
     }
 
     void advance(final RetryPolicy.RetryWait.Reason reason) {
-        if (reason == RetryPolicy.RetryWait.Reason.IO) {
-            ioAttempt++;
-        } else if (reason == RetryPolicy.RetryWait.Reason.RATE_LIMIT) {
-            rateLimitAttempt++;
-            countRateLimitWait();
-        } else {
-            serverAttempt++;
+        switch (reason) {
+            case IO -> {
+                ioAttempt++;
+            }
+            case RATE_LIMIT -> {
+                rateLimitAttempt++;
+                countRateLimitWait();
+            }
+            case SERVER_ERROR -> {
+                serverAttempt++;
+            }
         }
     }
 }

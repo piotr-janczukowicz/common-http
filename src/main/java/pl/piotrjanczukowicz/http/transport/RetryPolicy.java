@@ -293,6 +293,27 @@ final class RetryPolicy {
         return rateLimitWaits >= attempts.maxRateLimitAttempts() - 1;
     }
 
+    /**
+     * Whether a call must not wait at a rate-limit gate and fails fast instead: rate-limit retries are off, the budget
+     * is spent, the block lasts longer than {@link #maxRateLimitWait()}, or the wait would pass the deadline.
+     *
+     * @param rateLimitWaits rate-limit waits of the call so far, its own and the gate's
+     * @param remaining time the gate still blocks the bucket
+     * @param deadline value from {@link #deadline()}, or {@code null} for none
+     * @param delay the jittered wait that would follow
+     * @return {@code true} when the call must not wait
+     */
+    boolean isGateWaitRefused(
+            final int rateLimitWaits,
+            final Duration remaining,
+            final @Nullable Instant deadline,
+            final Duration delay) {
+        return !isRetryingRateLimits()
+                || isRateLimitBudgetUsed(rateLimitWaits)
+                || remaining.compareTo(maxRateLimitWait()) > 0
+                || isBeyondDeadline(deadline, delay);
+    }
+
     String bucketOf(final HttpRequest request) {
         return rateLimitDetector.bucketOf(request);
     }

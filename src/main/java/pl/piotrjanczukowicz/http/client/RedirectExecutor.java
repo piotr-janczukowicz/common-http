@@ -218,7 +218,7 @@ final class RedirectExecutor {
         final boolean downgrades = status == HttpStatus.SEE_OTHER.code()
                 || (current.method() == HttpMethod.POST
                         && (status == HttpStatus.MOVED_PERMANENTLY.code() || status == HttpStatus.FOUND.code()));
-        if (downgrades && isNotGetOrHead(current.method())) {
+        if (downgrades && !current.method().isBodyless()) {
             throw errors.redirectFailure(
                     response,
                     "HTTP " + status + " redirect of a " + current.method()
@@ -301,11 +301,7 @@ final class RedirectExecutor {
     private static boolean isBodyKept(final int statusCode, final HttpMethod method) {
         return statusCode == HttpStatus.TEMPORARY_REDIRECT.code()
                 || statusCode == HttpStatus.PERMANENT_REDIRECT.code()
-                || isNotGetOrHead(method);
-    }
-
-    private static boolean isNotGetOrHead(final HttpMethod method) {
-        return method != HttpMethod.GET && method != HttpMethod.HEAD;
+                || !method.isBodyless();
     }
 
     /**

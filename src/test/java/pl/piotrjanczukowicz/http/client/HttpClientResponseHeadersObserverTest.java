@@ -148,7 +148,9 @@ class HttpClientResponseHeadersObserverTest {
                         null));
 
         try (HttpClient client = client()) {
-            catchThrowable(() -> client.execute(HttpCall.get("/user")));
+            final HttpCall call = HttpCall.get("/user");
+
+            catchThrowable(() -> client.execute(call));
         }
 
         assertThat(observed).isEmpty();

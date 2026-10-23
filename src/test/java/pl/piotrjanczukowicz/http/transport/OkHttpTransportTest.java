@@ -41,8 +41,11 @@ class OkHttpTransportTest {
 
     @Test
     void request_shouldThrow_whenUriIsNotHttp() {
-        final Throwable thrown = catchThrowable(() -> new HttpRequest(
-                HttpMethod.GET, URI.create("mailto:dev@example.com"), HttpHeaders.empty(), HttpBody.absent()));
+        final var uri = URI.create("mailto:dev@example.com");
+        final var headers = HttpHeaders.empty();
+        final var absent = HttpBody.absent();
+
+        final Throwable thrown = catchThrowable(() -> new HttpRequest(HttpMethod.GET, uri, headers, absent));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("uri");
     }
@@ -185,8 +188,9 @@ class OkHttpTransportTest {
     @Test
     void execute_shouldThrowResponseTooLarge_whenGetAnnouncesLargerContentLength() {
         try (final HttpTransport transport = announcingTransport(200)) {
-            final Throwable thrown = catchThrowable(() -> transport.execute(
-                    new HttpRequest(HttpMethod.GET, API_URI, HttpHeaders.empty(), HttpBody.absent())));
+            final var request = new HttpRequest(HttpMethod.GET, API_URI, HttpHeaders.empty(), HttpBody.absent());
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(ResponseTooLargeException.class).hasMessageContaining("10 bytes");
         }
@@ -322,8 +326,9 @@ class OkHttpTransportTest {
 
         final Throwable thrown;
         try (final HttpTransport transport = wrap(client, HttpTransportConfiguration.defaults())) {
-            thrown = catchThrowable(() ->
-                    transport.stream(new HttpRequest(HttpMethod.GET, API_URI, HttpHeaders.empty(), HttpBody.absent())));
+            final var requestValue = new HttpRequest(HttpMethod.GET, API_URI, HttpHeaders.empty(), HttpBody.absent());
+
+            thrown = catchThrowable(() -> transport.stream(requestValue));
         }
 
         assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessage("source broke");

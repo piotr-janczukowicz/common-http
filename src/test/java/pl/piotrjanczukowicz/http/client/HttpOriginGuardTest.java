@@ -27,8 +27,10 @@ class HttpOriginGuardTest {
     @Test
     void requireApiTarget_shouldThrow_whenPathEscapesBase() {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
+        final URI uri = URI.create("https://api.example.test/admin");
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
 
-        final Throwable thrown = catchThrowable(() -> allow(guard, URI.create("https://api.example.test/admin")));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("API base URI");
     }
@@ -80,15 +82,23 @@ class HttpOriginGuardTest {
     }
 
     @Test
-    void requireApiTarget_shouldThrow_whenParsedUrlIsNull() {
+    void requireApiTarget_shouldThrowNullPointer_whenParsedUrlIsNull() {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
+        final ParsedUrl url = null;
 
-        final Throwable thrown = catchThrowable(() -> guard.requireApiTarget(null));
+        final Throwable thrown = catchThrowable(() -> guard.requireApiTarget(url));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("url");
-        assertThat(catchThrowable(() -> guard.requireTarget(HttpMethod.GET, null)))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("url");
+    }
+
+    @Test
+    void requireTarget_shouldThrowNullPointer_whenParsedUrlIsNull() {
+        final HttpOriginGuard guard = new HttpOriginGuard(BASE);
+        final ParsedUrl url = null;
+
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, url));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("url");
     }
 
     @Test
@@ -105,7 +115,15 @@ class HttpOriginGuardTest {
 
         assertThat(allow(guard, URI.create("http://[::1]:3000/api/x")))
                 .isEqualTo(URI.create("http://[::1]:3000/api/x"));
-        final Throwable thrown = catchThrowable(() -> allow(guard, URI.create("http://[::2]:3000/api/x")));
+    }
+
+    @Test
+    void requireApiTarget_shouldReject_whenIpv6HostIsAnotherAddress() {
+        final HttpOriginGuard guard = new HttpOriginGuard(URI.create("http://[::1]:3000/api/"));
+        final URI uri = URI.create("http://[::2]:3000/api/x");
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
+
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
 
         assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
     }
@@ -113,8 +131,10 @@ class HttpOriginGuardTest {
     @Test
     void requireApiTarget_shouldReject_whenUriIsNotHttp() {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
+        final URI uri = URI.create("mailto:dev@example.com");
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
 
-        final Throwable thrown = catchThrowable(() -> allow(guard, URI.create("mailto:dev@example.com")));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
 
         assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
     }
@@ -131,9 +151,9 @@ class HttpOriginGuardTest {
     @Test
     void requireTarget_shouldThrowViolation_whenParsedFormIsNull() {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
+        final URI uri = URI.create("ftp://api.example.test/v1/x");
 
-        final Throwable thrown = catchThrowable(
-                () -> guard.requireTarget(HttpMethod.GET, URI.create("ftp://api.example.test/v1/x"), null));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, null));
 
         assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
     }
@@ -142,8 +162,9 @@ class HttpOriginGuardTest {
     void requireTarget_shouldThrowViolation_whenRawUriHasDotSegment() {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
         final URI uri = URI.create("https://api.example.test/v1/a/../users");
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
 
-        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, ParsedUrl.parse(uri)));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
 
         assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
     }
@@ -152,23 +173,31 @@ class HttpOriginGuardTest {
     void requireTarget_shouldThrowViolation_whenParsedFormIsOffBase() {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
         final URI uri = URI.create("https://api.example.test/admin");
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
 
-        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, ParsedUrl.parse(uri)));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
 
         assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
     }
 
     @Test
-    void requireTarget_shouldThrowNullPointer_whenMethodOrUriNull() {
+    void requireTarget_shouldThrowNullPointer_whenMethodIsNull() {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
         final URI uri = URI.create("https://api.example.test/v1/users");
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
 
-        final Throwable thrown = catchThrowable(() -> guard.requireTarget(null, uri, ParsedUrl.parse(uri)));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(null, uri, parsed));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("method");
-        assertThat(catchThrowable(() -> guard.requireTarget(HttpMethod.GET, null, null)))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("uri");
+    }
+
+    @Test
+    void requireTarget_shouldThrowNullPointer_whenUriIsNull() {
+        final HttpOriginGuard guard = new HttpOriginGuard(BASE);
+
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, null, null));
+
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("uri");
     }
 
     @Test
@@ -192,8 +221,10 @@ class HttpOriginGuardTest {
             })
     void requireApiTarget_shouldThrow_whenPathHasDotSegment(final String uri) {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
+        final URI target = URI.create(uri);
+        final ParsedUrl parsed = ParsedUrl.parse(target);
 
-        final Throwable thrown = catchThrowable(() -> allow(guard, URI.create(uri)));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, target, parsed));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("API base URI");
     }
@@ -209,9 +240,10 @@ class HttpOriginGuardTest {
     @Test
     void requireApiTarget_shouldRejectSiblingPath_whenBasePathHasNoTrailingSlash() {
         final HttpOriginGuard guard = new HttpOriginGuard(URI.create("https://host.example.test/svc/v1"));
+        final URI uri = URI.create("https://host.example.test/svc/v1evil/x");
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
 
-        final Throwable thrown =
-                catchThrowable(() -> allow(guard, URI.create("https://host.example.test/svc/v1evil/x")));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("API base URI");
     }
@@ -227,9 +259,10 @@ class HttpOriginGuardTest {
     @Test
     void requireApiTarget_shouldNotLeakUserInfoOrQuery_whenRejected() {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
+        final URI uri = URI.create("https://alice:s3cret@api.example.test/admin?token=abc123#frag");
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
 
-        final Throwable thrown = catchThrowable(
-                () -> allow(guard, URI.create("https://alice:s3cret@api.example.test/admin?token=abc123#frag")));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
 
         assertThat(thrown)
                 .isInstanceOf(IllegalArgumentException.class)
@@ -253,8 +286,9 @@ class HttpOriginGuardTest {
         final URI base = URI.create("https://host.example.test/svc/v1/");
         final HttpOriginGuard guard = new HttpOriginGuard(base);
         final URI resolved = base.resolve(path);
+        final ParsedUrl parsed = ParsedUrl.parse(resolved);
 
-        final Throwable thrown = catchThrowable(() -> allow(guard, resolved));
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, resolved, parsed));
 
         assertThat(thrown)
                 .isInstanceOf(IllegalArgumentException.class)
@@ -277,7 +311,9 @@ class HttpOriginGuardTest {
 
     @Test
     void constructor_shouldThrow_whenBaseSchemeIsNotHttp() {
-        final Throwable thrown = catchThrowable(() -> new HttpOriginGuard(URI.create("ftp://api.example.test/")));
+        final URI base = URI.create("ftp://api.example.test/");
+
+        final Throwable thrown = catchThrowable(() -> new HttpOriginGuard(base));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("http or https");
     }

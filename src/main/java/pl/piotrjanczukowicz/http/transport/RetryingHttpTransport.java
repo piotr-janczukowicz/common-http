@@ -1,9 +1,5 @@
 package pl.piotrjanczukowicz.http.transport;
 
-import static pl.piotrjanczukowicz.http.HttpHeaderNames.DATE;
-import static pl.piotrjanczukowicz.http.HttpHeaderNames.ETAG;
-import static pl.piotrjanczukowicz.http.HttpHeaderNames.LAST_MODIFIED;
-import static pl.piotrjanczukowicz.http.HttpHeaderNames.TRANSFER_ENCODING;
 import static pl.piotrjanczukowicz.util.ConcurrencyUtils.toInterruptedIo;
 import static pl.piotrjanczukowicz.util.IoUtils.closeSuppressing;
 import static pl.piotrjanczukowicz.util.ValidationUtils.isNonPositive;
@@ -17,15 +13,8 @@ import java.net.UnknownHostException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.random.RandomGenerator;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLKeyException;
 import javax.net.ssl.SSLPeerUnverifiedException;
@@ -33,10 +22,8 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pl.piotrjanczukowicz.http.HttpBody;
-import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
-import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.HttpStreamResponse;
 import pl.piotrjanczukowicz.http.NonRetryableIOException;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
@@ -104,12 +91,6 @@ import pl.piotrjanczukowicz.http.ResponseTooLargeException;
 public final class RetryingHttpTransport implements HttpTransport {
 
     private static final Logger LOG = LoggerFactory.getLogger(RetryingHttpTransport.class);
-    // Lower-cased, because isReplayable compares the lower-cased name. Every Content-* header describes the body.
-    private static final String CONTENT_HEADER_PREFIX = "content-";
-    // Lower-cased, because isReplayable compares the lower-cased name.
-    private static final Set<String> NOT_REPLAYED = Stream.of(DATE, ETAG, LAST_MODIFIED, TRANSFER_ENCODING)
-            .map(name -> name.toLowerCase(Locale.ROOT))
-            .collect(Collectors.toUnmodifiableSet());
 
     private final HttpTransport delegate;
     private final RetryPolicy policy;
@@ -334,10 +315,7 @@ public final class RetryingHttpTransport implements HttpTransport {
             }
             final Duration remaining = gate.remaining(block);
             final Duration delay = policy.withRateLimitJitter(remaining);
-            if (!policy.isRetryingRateLimits()
-                    || policy.isRateLimitBudgetUsed(attempts.rateLimitWaits())
-                    || remaining.compareTo(policy.maxRateLimitWait()) > 0
-                    || policy.isBeyondDeadline(deadline, delay)) {
+            if (policy.isGateWaitRefused(attempts.rateLimitWaits(), remaining, deadline, delay)) {
                 events.logGate(request, "is not sent", block, remaining);
                 events.publish(RateLimitEvent.Type.GATE_FAIL_FAST, request, 0, remaining, attempts, block.bucket());
                 return Optional.of(gate.rejection(block, remaining));
@@ -421,27 +399,7 @@ public final class RetryingHttpTransport implements HttpTransport {
                 request,
                 exhausted.get().bucket(),
                 policy.untilReset(exhausted.get().resetAt(), response),
-                exhaustedRejection(response));
-    }
-
-    /**
-     * The rejection that a gate replays for an exhausted quota: HTTP 429 with the headers of the response that reported
-     * it, except the ones that describe its body or its validity ({@code Content-*}, {@code ETag},
-     * {@code Last-Modified}, {@code Transfer-Encoding}, {@code Date}), and no body.
-     */
-    private static HttpResponse exhaustedRejection(final HttpResponse response) {
-        final Map<String, List<String>> wire = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        response.headers().asMap().forEach((name, value) -> {
-            if (isReplayable(name)) {
-                wire.put(name, List.of(value));
-            }
-        });
-        return new HttpResponse(HttpStatus.TOO_MANY_REQUESTS.code(), HttpHeaders.fromWire(wire), HttpBody.absent());
-    }
-
-    private static boolean isReplayable(final String name) {
-        final String lower = name.toLowerCase(Locale.ROOT);
-        return !lower.startsWith(CONTENT_HEADER_PREFIX) && !NOT_REPLAYED.contains(lower);
+                ExhaustedRejection.of(response));
     }
 
     private boolean isFinalRateLimit(
@@ -455,12 +413,30 @@ public final class RetryingHttpTransport implements HttpTransport {
         return switch (verdict.outcome()) {
             case NOT_RETRIED -> true;
             case ATTEMPTS_EXHAUSTED ->
-                giveUp(RateLimitEvent.Type.GIVE_UP_ATTEMPTS_EXHAUSTED, request, response, verdict, attempts);
+                giveUp(
+                        RateLimitEvent.Type.GIVE_UP_ATTEMPTS_EXHAUSTED,
+                        request,
+                        response,
+                        verdict.required(),
+                        verdict,
+                        attempts);
             case WAIT_TOO_LONG ->
-                giveUp(RateLimitEvent.Type.GIVE_UP_WAIT_TOO_LONG, request, response, verdict, attempts);
+                giveUp(
+                        RateLimitEvent.Type.GIVE_UP_WAIT_TOO_LONG,
+                        request,
+                        response,
+                        verdict.required(),
+                        verdict,
+                        attempts);
             case RETRY ->
                 policy.isBeyondDeadline(deadline, verdict.delay())
-                        ? giveUp(RateLimitEvent.Type.GIVE_UP_DEADLINE, request, response, verdict, attempts)
+                        ? giveUp(
+                                RateLimitEvent.Type.GIVE_UP_DEADLINE,
+                                request,
+                                response,
+                                verdict.delay(),
+                                verdict,
+                                attempts)
                         : waitOutRateLimit(request, response, verdict, until, attempts);
         };
     }
@@ -487,9 +463,9 @@ public final class RetryingHttpTransport implements HttpTransport {
             final RateLimitEvent.Type type,
             final HttpRequest request,
             final HttpResponse response,
+            final Duration wait,
             final RetryPolicy.RateLimitVerdict verdict,
             final RetryAttempts attempts) {
-        final Duration wait = type == RateLimitEvent.Type.GIVE_UP_DEADLINE ? verdict.delay() : verdict.required();
         events.publish(type, request, response.statusCode(), wait, attempts, verdict.bucket());
         LOG.atInfo()
                 .setMessage("{} {} gave HTTP {}; not retrying after rate-limit attempt {}: {}")

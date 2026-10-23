@@ -366,8 +366,9 @@ class OkHttpTransportIntegrationTest {
 
         try (final StallAfterHeadersServer stall = new StallAfterHeadersServer(Duration.ofSeconds(60));
                 final HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final Throwable thrown = catchThrowable(
-                    () -> transport.execute(new HttpRequest(GET, stall.uri(), HttpHeaders.empty(), null)));
+            final var request = new HttpRequest(GET, stall.uri(), HttpHeaders.empty(), null);
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(InterruptedIOException.class);
         }
@@ -387,8 +388,9 @@ class OkHttpTransportIntegrationTest {
                 final HttpTransport transport = newTransport()) {
             transport.execute(new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null));
 
-            final Throwable thrown = catchThrowable(
-                    () -> transport.execute(new HttpRequest(POST, server.uri(), HttpHeaders.empty(), body)));
+            final var request = new HttpRequest(POST, server.uri(), HttpHeaders.empty(), body);
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(IOException.class);
             assertThat(opened).hasValue(1);
@@ -430,8 +432,9 @@ class OkHttpTransportIntegrationTest {
                 final HttpTransport transport = newTransport()) {
             transport.execute(new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null));
 
-            final Throwable thrown = catchThrowable(
-                    () -> transport.execute(new HttpRequest(POST, server.uri(), HttpHeaders.empty(), body)));
+            final var request = new HttpRequest(POST, server.uri(), HttpHeaders.empty(), body);
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(IOException.class);
             assertThat(server.connections()).isEqualTo(1);
@@ -447,8 +450,9 @@ class OkHttpTransportIntegrationTest {
                 final HttpTransport transport = newTransport()) {
             transport.execute(new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null));
 
-            final Throwable thrown = catchThrowable(() -> transport.execute(
-                    new HttpRequest(PATCH, server.uri(), HttpHeaders.empty(), HttpBody.ofFile(file))));
+            final var request = new HttpRequest(PATCH, server.uri(), HttpHeaders.empty(), HttpBody.ofFile(file));
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(IOException.class);
             assertThat(server.connections()).isEqualTo(1);
@@ -538,8 +542,9 @@ class OkHttpTransportIntegrationTest {
     void execute_shouldFailFast_whenContentLengthExceedsLimit() throws Exception {
         try (final LargeContentLengthServer server = new LargeContentLengthServer();
                 final HttpTransport transport = limitedTransport(1024)) {
-            final Throwable thrown = catchThrowable(
-                    () -> transport.execute(new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null)));
+            final var request = new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null);
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(ResponseTooLargeException.class).hasMessageContaining("1024 bytes");
         }
@@ -615,8 +620,9 @@ class OkHttpTransportIntegrationTest {
                 4);
 
         try (final HttpTransport transport = newTransport()) {
-            final Throwable thrown = catchThrowable(
-                    () -> transport.execute(new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body)));
+            final var request = new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body);
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown)
                     .isInstanceOf(NonRetryableIOException.class)
@@ -631,8 +637,9 @@ class OkHttpTransportIntegrationTest {
         final HttpBody body = HttpBody.ofStream(() -> new ByteArrayInputStream(new byte[8]), 4);
 
         try (final HttpTransport transport = newTransport()) {
-            final Throwable thrown = catchThrowable(
-                    () -> transport.execute(new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body)));
+            final var request = new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body);
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(NonRetryableIOException.class).hasMessageContaining("Content-Length of 4");
         }
@@ -644,8 +651,9 @@ class OkHttpTransportIntegrationTest {
         final HttpBody body = HttpBody.ofStream(() -> new ByteArrayInputStream(new byte[2]), 4);
 
         try (final HttpTransport transport = newTransport()) {
-            final Throwable thrown = catchThrowable(
-                    () -> transport.execute(new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body)));
+            final var request = new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body);
+
+            final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(NonRetryableIOException.class).hasMessageContaining("Content-Length of 4");
         }
@@ -763,7 +771,9 @@ class OkHttpTransportIntegrationTest {
         final HttpStreamResponse response = transport.stream(request);
 
         transport.close();
-        final Throwable thrown = catchThrowable(() -> response.body().readAllBytes());
+        final var bodyValue = response.body();
+
+        final Throwable thrown = catchThrowable(() -> bodyValue.readAllBytes());
 
         assertThat(thrown).isInstanceOf(IOException.class);
     }

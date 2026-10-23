@@ -46,7 +46,9 @@ class HttpClientTransportIntegrationTest {
 
         final Throwable thrown;
         try (final HttpClient client = client(limitedTransport())) {
-            thrown = catchThrowable(() -> client.execute(HttpCall.get(USER_PATH)));
+            final var call = HttpCall.get(USER_PATH);
+
+            thrown = catchThrowable(() -> client.execute(call));
         }
 
         assertThat(thrown).isInstanceOf(ResponseTooLargeException.class);
@@ -59,7 +61,9 @@ class HttpClientTransportIntegrationTest {
         client.close();
         client.close();
 
-        final Throwable thrown = catchThrowable(() -> client.execute(HttpCall.get(USER_PATH)));
+        final var call = HttpCall.get(USER_PATH);
+
+        final Throwable thrown = catchThrowable(() -> client.execute(call));
 
         assertThat(thrown).isInstanceOf(NonRetryableIOException.class);
         api.verifyRequested(GET, USER_PATH, 0);
@@ -72,7 +76,8 @@ class HttpClientTransportIntegrationTest {
 
         final HttpException thrown;
         try (final HttpClient client = client(newTransport())) {
-            thrown = (HttpException) catchThrowable(() -> client.execute(HttpCall.get("/start")));
+            final HttpCall call = HttpCall.get("/start");
+            thrown = (HttpException) catchThrowable(() -> client.execute(call));
         }
 
         assertThat(thrown.uri()).contains(other.uri("/target"));
@@ -86,7 +91,8 @@ class HttpClientTransportIntegrationTest {
 
         final HttpException thrown;
         try (final HttpClient client = client(newTransport())) {
-            thrown = (HttpException) catchThrowable(() -> client.execute(HttpCall.get("/begin")));
+            final HttpCall call = HttpCall.get("/begin");
+            thrown = (HttpException) catchThrowable(() -> client.execute(call));
         }
 
         assertThat(thrown.uri().orElseThrow().getRawQuery()).isEqualTo("page=2");
@@ -95,8 +101,9 @@ class HttpClientTransportIntegrationTest {
     @Test
     void execute_shouldNotLeakQuery_whenRequestIsOutsideBaseUri() {
         try (final HttpClient client = client(newTransport())) {
-            final Throwable thrown = catchThrowable(() -> client.execute(
-                    HttpCall.get(URI.create("https://user:pw@elsewhere.example.test/x?token=secret#frag"))));
+            final var call = HttpCall.get(URI.create("https://user:pw@elsewhere.example.test/x?token=secret#frag"));
+
+            final Throwable thrown = catchThrowable(() -> client.execute(call));
 
             assertThat(thrown)
                     .isInstanceOf(IllegalArgumentException.class)

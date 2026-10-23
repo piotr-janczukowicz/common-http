@@ -658,8 +658,10 @@ class ConditionalCachingHttpTransportTest {
     void constructor_shouldThrow_whenMaxEntriesBelowOne() {
         final HttpTransport delegate = HttpTransportMocks.mock();
 
-        final Throwable thrown = catchThrowable(() ->
-                new ConditionalCachingHttpTransport(delegate, 0, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT)));
+        final Set<String> headers = Set.of(ACCEPT);
+
+        final Throwable thrown = catchThrowable(
+                () -> new ConditionalCachingHttpTransport(delegate, 0, MAX_BODY_BYTES, MAX_TOTAL_BYTES, headers));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxEntries");
     }
@@ -668,8 +670,10 @@ class ConditionalCachingHttpTransportTest {
     void constructor_shouldThrow_whenMaxBodyBytesNegative() {
         final HttpTransport delegate = HttpTransportMocks.mock();
 
+        final Set<String> headers = Set.of(ACCEPT);
+
         final Throwable thrown = catchThrowable(
-                () -> new ConditionalCachingHttpTransport(delegate, MAX_ENTRIES, -1, MAX_TOTAL_BYTES, Set.of(ACCEPT)));
+                () -> new ConditionalCachingHttpTransport(delegate, MAX_ENTRIES, -1, MAX_TOTAL_BYTES, headers));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxBodyBytes");
     }
@@ -678,8 +682,10 @@ class ConditionalCachingHttpTransportTest {
     void constructor_shouldThrow_whenVaryingHeaderBlank() {
         final HttpTransport delegate = HttpTransportMocks.mock();
 
-        final Throwable thrown = catchThrowable(() -> new ConditionalCachingHttpTransport(
-                delegate, MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(" ")));
+        final Set<String> headers = Set.of(" ");
+
+        final Throwable thrown = catchThrowable(() ->
+                new ConditionalCachingHttpTransport(delegate, MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES, headers));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class);
     }
@@ -845,8 +851,10 @@ class ConditionalCachingHttpTransportTest {
     void constructor_shouldThrow_whenMaxTotalBytesNegative() {
         final HttpTransport delegate = HttpTransportMocks.mock();
 
+        final Set<String> headers2 = Set.of(ACCEPT);
+
         final Throwable thrown = catchThrowable(
-                () -> new ConditionalCachingHttpTransport(delegate, MAX_ENTRIES, MAX_BODY_BYTES, -1L, Set.of(ACCEPT)));
+                () -> new ConditionalCachingHttpTransport(delegate, MAX_ENTRIES, MAX_BODY_BYTES, -1L, headers2));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("maxTotalBytes");
     }
