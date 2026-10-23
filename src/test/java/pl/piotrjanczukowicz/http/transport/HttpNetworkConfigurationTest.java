@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.net.InetAddress;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Base64;
@@ -243,10 +244,16 @@ class HttpNetworkConfigurationTest {
 
     private static final class TrustNothing implements X509TrustManager {
         @Override
-        public void checkClientTrusted(final X509Certificate[] chain, final String authType) {}
+        public void checkClientTrusted(final X509Certificate[] chain, final String authType)
+                throws CertificateException {
+            throw new CertificateException("trusts nothing");
+        }
 
         @Override
-        public void checkServerTrusted(final X509Certificate[] chain, final String authType) {}
+        public void checkServerTrusted(final X509Certificate[] chain, final String authType)
+                throws CertificateException {
+            throw new CertificateException("trusts nothing");
+        }
 
         @Override
         public X509Certificate[] getAcceptedIssuers() {

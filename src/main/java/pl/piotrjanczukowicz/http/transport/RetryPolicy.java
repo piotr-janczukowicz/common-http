@@ -192,7 +192,7 @@ final class RetryPolicy {
     /**
      * Whether {@code failure} is never retried, for any method or attempt, because repeating the call cannot succeed or
      * must not happen: a request body that failed, a missing file, an unknown host, a TLS certificate or handshake
-     * failure, a call cancelled by OkHttp, a response over its size limit, a deadline-style interrupt, and a closed
+     * failure, a call canceled by OkHttp, a response over its size limit, a deadline-style interrupt, and a closed
      * transport. The transport checks this before it attaches an earlier failure as suppressed, so such a failure is
      * thrown unchanged.
      *

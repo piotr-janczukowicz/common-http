@@ -37,10 +37,6 @@ public final class DropMidRequestServer implements AutoCloseable {
         return connections.get();
     }
 
-    public int resets() {
-        return resets.get();
-    }
-
     @Override
     public void close() throws IOException {
         server.close();

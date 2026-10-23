@@ -338,6 +338,11 @@ final class OkHttpTransport implements HttpTransport {
         }
 
         @Override
+        public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+            return in.read(buffer, offset, length);
+        }
+
+        @Override
         public void close() throws IOException {
             try {
                 super.close();

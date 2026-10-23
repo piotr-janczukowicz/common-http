@@ -773,7 +773,7 @@ class OkHttpTransportIntegrationTest {
         transport.close();
         final var bodyValue = response.body();
 
-        final Throwable thrown = catchThrowable(() -> bodyValue.readAllBytes());
+        final Throwable thrown = catchThrowable(bodyValue::readAllBytes);
 
         assertThat(thrown).isInstanceOf(IOException.class);
     }

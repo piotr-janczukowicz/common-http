@@ -34,13 +34,6 @@ public final class TestRetryingTransports {
         return new RetryingHttpTransport(delegate, configuration, pause::sleep, clock, random);
     }
 
-    public static Pause recordingAndAdvancing(final List<Duration> sleeps, final MutableClock clock) {
-        return duration -> {
-            sleeps.add(duration);
-            clock.advance(duration);
-        };
-    }
-
     public static int gateSize(final RetryingHttpTransport transport) {
         return transport.gateSize();
     }

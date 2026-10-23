@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import java.net.URI;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.uri.ParsedUrl;
@@ -15,25 +16,6 @@ import pl.piotrjanczukowicz.test.UnitTest;
 class HttpOriginGuardTest {
 
     private static final URI BASE = URI.create("https://api.example.test/v1/");
-
-    @Test
-    void requireApiTarget_shouldReturnUri_whenPathUnderBase() {
-        final HttpOriginGuard guard = new HttpOriginGuard(BASE);
-        final URI uri = URI.create("https://api.example.test/v1/users");
-
-        assertThat(allow(guard, uri)).isEqualTo(uri);
-    }
-
-    @Test
-    void requireApiTarget_shouldThrow_whenPathEscapesBase() {
-        final HttpOriginGuard guard = new HttpOriginGuard(BASE);
-        final URI uri = URI.create("https://api.example.test/admin");
-        final ParsedUrl parsed = ParsedUrl.parse(uri);
-
-        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
-
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("API base URI");
-    }
 
     @ParameterizedTest
     @ValueSource(
@@ -102,36 +84,9 @@ class HttpOriginGuardTest {
     }
 
     @Test
-    void requireApiTarget_shouldMatch_whenBaseIpv6IsNotCanonical() {
-        final HttpOriginGuard guard = new HttpOriginGuard(URI.create("http://[0:0:0:0:0:0:0:1]:3000/api/"));
-
-        assertThat(allow(guard, URI.create("http://[::1]:3000/api/x")))
-                .isEqualTo(URI.create("http://[::1]:3000/api/x"));
-    }
-
-    @Test
-    void requireApiTarget_shouldMatch_whenBaseIsIpv6() {
-        final HttpOriginGuard guard = new HttpOriginGuard(URI.create("http://[::1]:3000/api/"));
-
-        assertThat(allow(guard, URI.create("http://[::1]:3000/api/x")))
-                .isEqualTo(URI.create("http://[::1]:3000/api/x"));
-    }
-
-    @Test
     void requireApiTarget_shouldReject_whenIpv6HostIsAnotherAddress() {
         final HttpOriginGuard guard = new HttpOriginGuard(URI.create("http://[::1]:3000/api/"));
         final URI uri = URI.create("http://[::2]:3000/api/x");
-        final ParsedUrl parsed = ParsedUrl.parse(uri);
-
-        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
-
-        assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
-    }
-
-    @Test
-    void requireApiTarget_shouldReject_whenUriIsNotHttp() {
-        final HttpOriginGuard guard = new HttpOriginGuard(BASE);
-        final URI uri = URI.create("mailto:dev@example.com");
         final ParsedUrl parsed = ParsedUrl.parse(uri);
 
         final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
@@ -158,21 +113,16 @@ class HttpOriginGuardTest {
         assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
     }
 
-    @Test
-    void requireTarget_shouldThrowViolation_whenRawUriHasDotSegment() {
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "mailto:dev@example.com",
+                "https://api.example.test/v1/a/../users",
+                "https://api.example.test/admin"
+            })
+    void requireTarget_shouldThrowViolation_whenUriCannotBeServed(final String target) {
         final HttpOriginGuard guard = new HttpOriginGuard(BASE);
-        final URI uri = URI.create("https://api.example.test/v1/a/../users");
-        final ParsedUrl parsed = ParsedUrl.parse(uri);
-
-        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
-
-        assertThat(thrown).isInstanceOf(HttpOriginViolationException.class);
-    }
-
-    @Test
-    void requireTarget_shouldThrowViolation_whenParsedFormIsOffBase() {
-        final HttpOriginGuard guard = new HttpOriginGuard(BASE);
-        final URI uri = URI.create("https://api.example.test/admin");
+        final URI uri = URI.create(target);
         final ParsedUrl parsed = ParsedUrl.parse(uri);
 
         final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
@@ -208,52 +158,6 @@ class HttpOriginGuardTest {
         assertThat(guard.requireTarget(HttpMethod.POST, uri, ParsedUrl.parse(uri))
                         .toUri())
                 .isEqualTo(uri);
-    }
-
-    @ParameterizedTest
-    @ValueSource(
-            strings = {
-                "https://api.example.test/v1/../admin",
-                "https://api.example.test/v1/%2e%2e/admin",
-                "https://api.example.test/v1/%2E%2e/admin",
-                "https://api.example.test/v1/./users",
-                "https://api.example.test/v1/users/.."
-            })
-    void requireApiTarget_shouldThrow_whenPathHasDotSegment(final String uri) {
-        final HttpOriginGuard guard = new HttpOriginGuard(BASE);
-        final URI target = URI.create(uri);
-        final ParsedUrl parsed = ParsedUrl.parse(target);
-
-        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, target, parsed));
-
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("API base URI");
-    }
-
-    @Test
-    void requireApiTarget_shouldReturnUri_whenSegmentOnlyContainsDots() {
-        final HttpOriginGuard guard = new HttpOriginGuard(BASE);
-        final URI uri = URI.create("https://api.example.test/v1/users/..foo/.bar/a.b");
-
-        assertThat(allow(guard, uri)).isEqualTo(uri);
-    }
-
-    @Test
-    void requireApiTarget_shouldRejectSiblingPath_whenBasePathHasNoTrailingSlash() {
-        final HttpOriginGuard guard = new HttpOriginGuard(URI.create("https://host.example.test/svc/v1"));
-        final URI uri = URI.create("https://host.example.test/svc/v1evil/x");
-        final ParsedUrl parsed = ParsedUrl.parse(uri);
-
-        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
-
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("API base URI");
-    }
-
-    @Test
-    void requireApiTarget_shouldAcceptChild_whenBasePathHasNoTrailingSlash() {
-        final HttpOriginGuard guard = new HttpOriginGuard(URI.create("https://host.example.test/svc/v1"));
-        final URI uri = URI.create("https://host.example.test/svc/v1/user");
-
-        assertThat(allow(guard, uri)).isEqualTo(uri);
     }
 
     @Test
@@ -296,17 +200,54 @@ class HttpOriginGuardTest {
                 .hasMessageNotContaining("s3cret");
     }
 
+    @ParameterizedTest
+    @CsvSource({
+        "https://api.example.test/v1/, https://api.example.test/v1/users",
+        "https://api.example.test/v1/, https://api.example.test/v1/users/..foo/.bar/a.b",
+        "http://[0:0:0:0:0:0:0:1]:3000/api/, http://[::1]:3000/api/x",
+        "http://[::1]:3000/api/, http://[::1]:3000/api/x",
+        "https://host.example.test/svc/v1, https://host.example.test/svc/v1/user"
+    })
+    void requireTarget_shouldReturnUri_whenTargetIsUnderBase(final String base, final String target) {
+        final HttpOriginGuard guard = new HttpOriginGuard(URI.create(base));
+        final URI uri = URI.create(target);
+
+        final URI allowed = allow(guard, uri);
+
+        assertThat(allowed).isEqualTo(uri);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "https://api.example.test/v1/, https://api.example.test/admin",
+        "https://host.example.test/svc/v1, https://host.example.test/svc/v1evil/x",
+        "https://api.example.test/v1/, https://api.example.test/v1/../admin",
+        "https://api.example.test/v1/, https://api.example.test/v1/%2e%2e/admin",
+        "https://api.example.test/v1/, https://api.example.test/v1/%2E%2e/admin",
+        "https://api.example.test/v1/, https://api.example.test/v1/./users",
+        "https://api.example.test/v1/, https://api.example.test/v1/users/.."
+    })
+    void requireTarget_shouldThrow_whenTargetEscapesBase(final String base, final String target) {
+        final HttpOriginGuard guard = new HttpOriginGuard(URI.create(base));
+        final URI uri = URI.create(target);
+        final ParsedUrl parsed = ParsedUrl.parse(uri);
+
+        final Throwable thrown = catchThrowable(() -> guard.requireTarget(HttpMethod.GET, uri, parsed));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("API base URI");
+    }
+
     private static URI allow(final HttpOriginGuard guard, final URI uri) {
         return guard.requireTarget(HttpMethod.GET, uri, ParsedUrl.parse(uri)).toUri();
     }
 
     @Test
-    void constructor_shouldThrowIllegalArgument_whenBaseHostIsNotAscii() {
+    void constructor_shouldThrowNullPointer_whenBaseHostIsNotAscii() {
         final URI base = URI.create("https://bücher.example/api/");
 
         final Throwable thrown = catchThrowable(() -> new HttpOriginGuard(base));
 
-        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("host");
+        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("host");
     }
 
     @Test

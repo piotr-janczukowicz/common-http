@@ -77,6 +77,8 @@ public record RetryConfiguration(
 
     private static final Set<Integer> DEFAULT_RETRYABLE_SERVER_STATUSES = Set.of(502, 503, 504);
 
+    private static final String MAX_RATE_LIMIT_WAIT = "maxRateLimitWait";
+
     // Retry delays are computed in nanoseconds, the range Duration.toNanos() accepts.
     private static final Duration MAX_NANOS = Duration.ofNanos(Long.MAX_VALUE);
 
@@ -88,7 +90,7 @@ public record RetryConfiguration(
         requireNonNull(rateLimitDetector, "rateLimitDetector");
         requireNonNull(rateLimitEventListener, "rateLimitEventListener");
         requireAtLeast(waits.maxBackoff(), waits.defaultBackoff(), "maxBackoff");
-        requireAtLeast(waits.maxRateLimitWait(), waits.minRateLimitWait(), "maxRateLimitWait");
+        requireAtLeast(waits.maxRateLimitWait(), waits.minRateLimitWait(), MAX_RATE_LIMIT_WAIT);
         if (totalDeadline != null) {
             requirePositive(totalDeadline, "totalDeadline");
         }
@@ -151,10 +153,6 @@ public record RetryConfiguration(
         requireAtMost(requireNonNegative(value, name), MAX_NANOS, name);
     }
 
-    private static void requirePositiveNanos(final Duration value, final String name) {
-        requireAtMost(requirePositive(value, name), MAX_NANOS, name);
-    }
-
     /** I/O, rate-limit and 5xx tries, each budget independent and including the first try. */
     public record AttemptBudgets(int maxIoAttempts, int maxRateLimitAttempts, int maxServerErrorAttempts) {
         public AttemptBudgets {
@@ -181,10 +179,14 @@ public record RetryConfiguration(
         public WaitCaps {
             requireNonNegativeNanos(defaultBackoff, "defaultBackoff");
             requireNonNegativeNanos(maxBackoff, "maxBackoff");
-            requireNonNegativeNanos(maxRateLimitWait, "maxRateLimitWait");
+            requireNonNegativeNanos(maxRateLimitWait, MAX_RATE_LIMIT_WAIT);
             requireNonNegativeNanos(maxServerErrorWait, "maxServerErrorWait");
             requireNonNegativeNanos(minRateLimitWait, "minRateLimitWait");
             requirePositiveNanos(maxRateLimitBlock, "maxRateLimitBlock");
+        }
+
+        private static void requirePositiveNanos(final Duration value, final String name) {
+            requireAtMost(requirePositive(value, name), MAX_NANOS, name);
         }
     }
 
@@ -361,7 +363,7 @@ public record RetryConfiguration(
          * @throws NullPointerException if {@code maxRateLimitWait} is {@code null}
          */
         public Builder maxRateLimitWait(final Duration maxRateLimitWait) {
-            this.maxRateLimitWait = requireNonNull(maxRateLimitWait, "maxRateLimitWait");
+            this.maxRateLimitWait = requireNonNull(maxRateLimitWait, MAX_RATE_LIMIT_WAIT);
             return this;
         }
 

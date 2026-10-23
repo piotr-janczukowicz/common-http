@@ -9,12 +9,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -339,7 +340,7 @@ public abstract class AbstractHttpCaller {
      * @param target destination file; its directory must exist
      * @param maxBytes most bytes accepted, zero or more
      * @return {@code target}
-     * @throws ResponseTooLargeException if the body is larger than {@code maxBytes}
+     * @throws pl.piotrjanczukowicz.http.ResponseTooLargeException if the body is larger than {@code maxBytes}
      * @throws IOException if the transport fails or the file cannot be written
      * @throws NullPointerException if {@code call} or {@code target} is {@code null}
      * @throws IllegalArgumentException if {@code maxBytes} is negative
@@ -400,7 +401,7 @@ public abstract class AbstractHttpCaller {
      *
      * <p>The {@code {}} rule is deliberate: some APIs answer a read of a value that is not set with {@code 200 {}} to
      * mean "nothing here", and decoding that into a model would produce an object with every field missing. It applies
-     * to any 2xx status, not only the listed ones, so use it only for endpoints with that behaviour;
+     * to any 2xx status, not only the listed ones, so use it only for endpoints with that behavior;
      * {@link #fetchOptional(HttpCall, Class)} treats HTTP 204 and 304, an HTTP 202 without a body, and an empty body as
      * empty.
      *
@@ -649,11 +650,9 @@ public abstract class AbstractHttpCaller {
     // Null statuses are rejected here, before the request is sent.
     private static Set<Integer> expectedCodes(final HttpStatus... statuses) {
         requireNonNull(statuses, "statuses");
-        final Set<Integer> codes = new HashSet<>();
-        for (final HttpStatus status : statuses) {
-            codes.add(requireNonNull(status, "status").code());
-        }
-        return codes;
+        return Arrays.stream(statuses)
+                .map(status -> requireNonNull(status, "status").code())
+                .collect(Collectors.toSet());
     }
 
     private static boolean isEmpty(final HttpResponse response, final HttpStatus... statuses) {

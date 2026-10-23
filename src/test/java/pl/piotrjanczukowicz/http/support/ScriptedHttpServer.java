@@ -32,7 +32,7 @@ public final class ScriptedHttpServer implements AutoCloseable {
         this.server.setExecutor(executor);
         this.server.createContext("/", exchange -> {
             final int call = calls.incrementAndGet();
-            try {
+            try (exchange) {
                 script.run(call, exchange);
             } catch (final InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -40,8 +40,6 @@ public final class ScriptedHttpServer implements AutoCloseable {
                 disconnects.incrementAndGet();
             } catch (final Exception | AssertionError failure) {
                 scriptFailure.compareAndSet(null, failure);
-            } finally {
-                exchange.close();
             }
         });
         this.server.start();

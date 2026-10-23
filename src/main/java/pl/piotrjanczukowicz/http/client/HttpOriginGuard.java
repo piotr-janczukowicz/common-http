@@ -35,14 +35,15 @@ public class HttpOriginGuard {
      * {@code /api/v3/x} but not {@code /api/v3evil/x}.
      *
      * @param baseUri API base URI
-     * @throws NullPointerException if {@code baseUri} or its scheme is {@code null}
-     * @throws IllegalArgumentException if the scheme is not http or https, or {@code baseUri} has no host that
-     *     {@link URI#getHost()} can read, for example an internationalized host name, which must be written in punycode
+     * @throws NullPointerException if {@code baseUri}, its scheme or its host is {@code null}; {@link URI#getHost()}
+     *     returns {@code null} for a host it cannot read, for example an internationalized host name, which must be
+     *     written in punycode
+     * @throws IllegalArgumentException if the scheme is not http or https
      */
     public HttpOriginGuard(final URI baseUri) {
         requireNonNull(baseUri, "baseUri");
         this.scheme = requireHttpScheme(requireNonNull(baseUri.getScheme(), "scheme"));
-        requireHost(baseUri);
+        requireNonNull(baseUri.getHost(), "host");
         // Parsed like the targets, so a host or path that OkHttp writes differently, such as [0:0:0:0:0:0:0:1], still
         // matches.
         final ParsedUrl base = ParsedUrl.of(baseUri);
@@ -160,15 +161,5 @@ public class HttpOriginGuard {
             return scheme;
         }
         throw new IllegalArgumentException("baseUri scheme must be http or https: " + scheme);
-    }
-
-    private static String requireHost(final URI baseUri) {
-        final String uriHost = baseUri.getHost();
-        if (uriHost == null) {
-            throw new IllegalArgumentException(
-                    "baseUri has no readable host; write an internationalized host name in punycode: "
-                            + HttpUris.describeSafe(baseUri));
-        }
-        return uriHost;
     }
 }

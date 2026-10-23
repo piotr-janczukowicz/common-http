@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link Clock} that starts at the wall-clock time of its creation and then only follows {@link System#nanoTime()}. A
@@ -17,9 +19,13 @@ final class MonotonicClock extends Clock {
     private final long startNanos;
 
     MonotonicClock() {
+        this(Instant.now(), System.nanoTime());
+    }
+
+    MonotonicClock(final Instant start, final long startNanos) {
         super();
-        this.start = Instant.now();
-        this.startNanos = System.nanoTime();
+        this.start = start;
+        this.startNanos = startNanos;
     }
 
     @Override
@@ -35,5 +41,18 @@ final class MonotonicClock extends Clock {
     @Override
     public Instant instant() {
         return start.plusNanos(System.nanoTime() - startNanos);
+    }
+
+    @Override
+    public boolean equals(final @Nullable Object other) {
+        return this == other
+                || other instanceof final MonotonicClock that
+                        && start.equals(that.start)
+                        && startNanos == that.startNanos;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(start, startNanos);
     }
 }

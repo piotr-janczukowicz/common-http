@@ -51,8 +51,8 @@ public final class MutationPacingHttpTransport implements HttpTransport {
     public static final Set<HttpMethod> DEFAULT_MUTATION_METHODS =
             Set.of(HttpMethod.POST, HttpMethod.PATCH, HttpMethod.PUT, HttpMethod.DELETE);
 
-    private static final String DELEGATE = "delegate";
-    private static final String METHODS = "methods";
+    private static final String DELEGATE_ARGUMENT = "delegate";
+    private static final String METHODS_ARGUMENT = "methods";
     private static final String INTERRUPTED_WAIT = "interrupted while waiting for the mutation interval";
 
     private final HttpTransport delegate;
@@ -100,9 +100,9 @@ public final class MutationPacingHttpTransport implements HttpTransport {
             final Set<HttpMethod> methods,
             final Clock clock,
             final Sleeper sleeper) {
-        this.delegate = requireNonNull(delegate, DELEGATE);
+        this.delegate = requireNonNull(delegate, DELEGATE_ARGUMENT);
         this.minInterval = requirePositive(minInterval, "minInterval");
-        this.methods = Set.copyOf(requireNonEmpty(methods, METHODS));
+        this.methods = Set.copyOf(requireNonEmpty(methods, METHODS_ARGUMENT));
         this.clock = requireNonNull(clock, "clock");
         this.sleeper = requireNonNull(sleeper, "sleeper");
     }
@@ -169,6 +169,7 @@ public final class MutationPacingHttpTransport implements HttpTransport {
         }
     }
 
+    @SuppressWarnings("java:S2142") // toInterruptedIo restores the interrupt flag before the exception is built.
     private void lockInterruptibly() throws InterruptedIOException {
         try {
             lock.lockInterruptibly();

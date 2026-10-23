@@ -185,7 +185,7 @@ class MutationPacingHttpTransportTest {
     }
 
     @Test
-    void close_shouldCloseDelegate_whenCalled() throws IOException {
+    void close_shouldCloseDelegate_whenCalled() {
         final RecordingDelegate delegate = new RecordingDelegate(Clock.systemUTC());
         final MutationPacingHttpTransport transport = new MutationPacingHttpTransport(
                 delegate.transport(), INTERVAL, MutationPacingHttpTransport.DEFAULT_MUTATION_METHODS);
@@ -196,7 +196,7 @@ class MutationPacingHttpTransportTest {
     }
 
     @Test
-    void execute_shouldFailWithoutSending_whenTransportClosed() throws IOException {
+    void execute_shouldFailWithoutSending_whenTransportClosed() {
         final ManualClock clock = new ManualClock(START);
         final RecordingDelegate delegate = new RecordingDelegate(clock);
         final MutationPacingHttpTransport transport = paced(delegate.transport(), clock, new RecordingSleeper(clock));
@@ -368,22 +368,22 @@ class MutationPacingHttpTransportTest {
         private HttpTransport transport() {
             return HttpTransportMocks.mock(invocation -> {
                 final String method = invocation.getMethod().getName();
-                if ("execute".equals(method)) {
-                    record();
-                    return ok();
-                }
-                if ("stream".equals(method)) {
-                    record();
-                    return HttpStreamResponse.buffered(ok());
-                }
-                if ("close".equals(method)) {
-                    isClosed.set(true);
+                switch (method) {
+                    case "execute" -> {
+                        recordStart();
+                        return ok();
+                    }
+                    case "stream" -> {
+                        recordStart();
+                        return HttpStreamResponse.buffered(ok());
+                    }
+                    case "close" -> isClosed.set(true);
                 }
                 return null;
             });
         }
 
-        private void record() {
+        private void recordStart() {
             startedAt.add(clock.instant());
             calls.incrementAndGet();
         }

@@ -9,12 +9,16 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.http.Fault;
+import com.github.tomakehurst.wiremock.http.RequestListener;
+import com.github.tomakehurst.wiremock.matching.RequestPattern;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import java.net.URI;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullUnmarked;
@@ -115,20 +119,19 @@ public final class StubHttpServer implements BeforeAllCallback, AfterAllCallback
         requireNonNull(method, "method");
         requireNonNull(timeout, "timeout");
         ensureStarted();
-        final long deadline = System.nanoTime() + timeout.toNanos();
-        while (server.countRequestsMatching(pattern(method, path).build()).getCount() == 0) {
-            if (System.nanoTime() > deadline) {
-                throw new IllegalStateException("no " + method + " " + path + " request within " + timeout);
+        final RequestPattern requestPattern = pattern(method, path).build();
+        final CountDownLatch requested = new CountDownLatch(1);
+        final RequestListener listener = (request, response) -> {
+            if (requestPattern.match(request).isExactMatch()) {
+                requested.countDown();
             }
-            Thread.sleep(10);
+        };
+        // WireMock cannot remove a listener; this one only counts a latch down, so it stays harmless afterwards.
+        server.addMockServiceRequestListener(listener);
+        if (server.countRequestsMatching(requestPattern).getCount() == 0
+                && !requested.await(timeout.toNanos(), TimeUnit.NANOSECONDS)) {
+            throw new IllegalStateException("no " + method + " " + path + " request within " + timeout);
         }
-    }
-
-    public void verifyNoHeader(final HttpMethod method, final String path, final String name) {
-        requireNonNull(method, "method");
-        requireNonNull(name, "name");
-        ensureStarted();
-        server.verify(pattern(method, path).withHeader(name, absent()));
     }
 
     public void verifyHeader(final HttpMethod method, final String path, final String name, final String value) {
@@ -137,21 +140,6 @@ public final class StubHttpServer implements BeforeAllCallback, AfterAllCallback
         requireNonNull(value, "value");
         ensureStarted();
         server.verify(pattern(method, path).withHeader(name, equalTo(value)));
-    }
-
-    public void verifyQueryParam(final HttpMethod method, final String path, final String name, final String value) {
-        requireNonNull(method, "method");
-        requireNonNull(name, "name");
-        requireNonNull(value, "value");
-        ensureStarted();
-        server.verify(pattern(method, path).withQueryParam(name, equalTo(value)));
-    }
-
-    public void verifyNoQueryParam(final HttpMethod method, final String path, final String name) {
-        requireNonNull(method, "method");
-        requireNonNull(name, "name");
-        ensureStarted();
-        server.verify(pattern(method, path).withQueryParam(name, absent()));
     }
 
     public void verifyBody(final HttpMethod method, final String path, final String body) {
@@ -166,12 +154,6 @@ public final class StubHttpServer implements BeforeAllCallback, AfterAllCallback
         requireNonNull(body, "body");
         ensureStarted();
         server.verify(pattern(method, path).withRequestBody(binaryEqualTo(body)));
-    }
-
-    public void verifyAbsentBody(final HttpMethod method, final String path) {
-        requireNonNull(method, "method");
-        ensureStarted();
-        server.verify(pattern(method, path).withRequestBody(absent()));
     }
 
     @Override

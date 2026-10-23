@@ -194,10 +194,7 @@ class RedirectExecutorTest {
         final RedirectPolicy policy =
                 new RedirectPolicy(5, Set.of(HttpMethod.GET, HttpMethod.PUT), Set.of(ACCEPT, USER_AGENT));
         final RedirectExecutor executor = new RedirectExecutor(
-                transport,
-                policy,
-                (method, response, uri) -> HttpException.from(method, response, uri),
-                ParsedUrl.of(URI.create("https://api.example.test/")));
+                transport, policy, HttpException::from, ParsedUrl.of(URI.create("https://api.example.test/")));
         final HttpRequest request = new HttpRequest(
                 HttpMethod.PUT,
                 URI.create("https://api.example.test/start"),
@@ -674,8 +671,7 @@ class RedirectExecutorTest {
     private RedirectExecutor follower(final ParsedUrl apiBase) {
         final RedirectPolicy policy = new RedirectPolicy(
                 5, Set.of(HttpMethod.GET, HttpMethod.HEAD), Set.of(ACCEPT, USER_AGENT, VERSION_HEADER));
-        return new RedirectExecutor(
-                transport, policy, (method, response, uri) -> HttpException.from(method, response, uri), apiBase);
+        return new RedirectExecutor(transport, policy, HttpException::from, apiBase);
     }
 
     private static HttpRequest withCredentialId(final String uri) {
@@ -848,10 +844,7 @@ class RedirectExecutorTest {
         final RedirectPolicy policy =
                 new RedirectPolicy(5, Set.of(HttpMethod.GET, HttpMethod.PUT), Set.of(ACCEPT, USER_AGENT));
         final RedirectExecutor executor = new RedirectExecutor(
-                transport,
-                policy,
-                (method, response, uri) -> HttpException.from(method, response, uri),
-                ParsedUrl.of(URI.create("https://api.example.test/")));
+                transport, policy, HttpException::from, ParsedUrl.of(URI.create("https://api.example.test/")));
         final HttpRequest request = new HttpRequest(
                 HttpMethod.PUT,
                 URI.create("https://api.example.test/upload"),

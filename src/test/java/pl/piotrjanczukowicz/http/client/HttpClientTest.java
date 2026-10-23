@@ -169,7 +169,7 @@ class HttpClientTest {
     }
 
     @Test
-    void execute_shouldNameTheArgument_whenExpectedStatusesHoldNull() throws IOException {
+    void execute_shouldNameTheArgument_whenExpectedStatusesHoldNull() {
         final Set<Integer> statuses = new HashSet<>();
         statuses.add(null);
 

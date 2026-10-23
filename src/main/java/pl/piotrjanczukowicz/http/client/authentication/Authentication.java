@@ -71,7 +71,7 @@ public record Authentication(Type type, String value, String identity) {
      * Basic authentication for {@code user} and {@code password}: the credential is the Base64 encoding of
      * {@code user:password} as UTF-8.
      *
-     * @param user user name, or a client ID; it must not be blank or contain {@code :}
+     * @param user username, or a client ID; it must not be blank or contain {@code :}
      * @param password password, or a client secret; it must not be blank
      * @return authentication of type {@link Type#BASIC}
      * @throws NullPointerException if an argument is {@code null}

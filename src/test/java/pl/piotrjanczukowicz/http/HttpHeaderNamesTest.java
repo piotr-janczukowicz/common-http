@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -67,7 +66,7 @@ class HttpHeaderNamesTest {
                 .filter(field -> Modifier.isStatic(field.getModifiers()))
                 .filter(field -> field.getType() == String.class)
                 .map(Field::getName)
-                .collect(Collectors.toList());
+                .toList();
 
         assertThat(declared).containsExactlyInAnyOrderElementsOf(EXPECTED_NAMES.keySet());
     }

@@ -111,7 +111,7 @@ class OkHttpTransportNetworkIntegrationTest {
     }
 
     @Test
-    void execute_shouldFailWithUnknownHost_whenHostResolverReturnsNull() throws Exception {
+    void execute_shouldFailWithUnknownHost_whenHostResolverReturnsNull() {
         final HttpTransportConfiguration configuration = configuration(
                 HttpNetworkConfiguration.builder().hostResolver(host -> null).build());
 
@@ -127,7 +127,7 @@ class OkHttpTransportNetworkIntegrationTest {
     }
 
     @Test
-    void execute_shouldFailWithUnknownHost_whenHostResolverReturnsNoAddresses() throws Exception {
+    void execute_shouldFailWithUnknownHost_whenHostResolverReturnsNoAddresses() {
         final HttpTransportConfiguration configuration = configuration(HttpNetworkConfiguration.builder()
                 .hostResolver(host -> List.of())
                 .build());

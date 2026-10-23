@@ -47,6 +47,7 @@ final class OkHttpNetworks {
         }
     }
 
+    @SuppressWarnings("java:S2637") // hasCredentials() guarantees both are set; requireNonNull never returns null.
     private static void applyProxy(final OkHttpClient.Builder builder, final HttpProxy proxy) {
         final Proxy.Type type =
                 switch (proxy.type()) {

@@ -16,7 +16,6 @@ import static pl.piotrjanczukowicz.util.ValidationUtils.requireNonNull;
 import static pl.piotrjanczukowicz.util.ValidationUtils.requireNotBlank;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -29,6 +28,7 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
@@ -175,11 +175,9 @@ public final class ConditionalCachingHttpTransport implements HttpTransport {
     }
 
     private static List<String> copyNames(final Set<String> names) {
-        final Set<String> sorted = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        for (final String name : names) {
-            sorted.add(requireNotBlank(name, "varying header names"));
-        }
-        return List.copyOf(sorted);
+        return List.copyOf(names.stream()
+                .map(name -> requireNotBlank(name, "varying header names"))
+                .collect(Collectors.toCollection(() -> new TreeSet<>(String.CASE_INSENSITIVE_ORDER))));
     }
 
     private static boolean isCacheable(final HttpRequest request) {
@@ -191,10 +189,8 @@ public final class ConditionalCachingHttpTransport implements HttpTransport {
     }
 
     private Key keyOf(final HttpRequest request) {
-        final List<Optional<String>> values = new ArrayList<>(varyingHeaders.size());
-        for (final String name : varyingHeaders) {
-            values.add(request.headers().get(name));
-        }
+        final List<Optional<String>> values =
+                varyingHeaders.stream().map(request.headers()::get).toList();
         return new Key(request.method(), request.url(), request.credentialKey(), values);
     }
 

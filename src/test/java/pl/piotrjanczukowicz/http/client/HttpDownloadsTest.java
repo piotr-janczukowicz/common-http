@@ -184,7 +184,7 @@ class HttpDownloadsTest {
     }
 
     @Test
-    void toFile_shouldThrowAndLeaveNothing_whenBodyExceedsLimit() throws IOException {
+    void toFile_shouldThrowAndLeaveNothing_whenBodyExceedsLimit() {
         final Path target = tempDir.resolve("limited.bin");
         final InputStream body = new ByteArrayInputStream(new byte[] {1, 2, 3, 4});
 

@@ -232,6 +232,8 @@ public final class RetryingHttpTransport implements HttpTransport {
      * @throws NullPointerException if {@code request} is {@code null}
      */
     @Override
+    @SuppressWarnings(
+            "java:S1181") // An Error must not leak the open response, so it is caught, closed after, rethrown.
     public HttpStreamResponse stream(final HttpRequest request) throws IOException {
         requireNonNull(request, "request");
 
@@ -392,14 +394,15 @@ public final class RetryingHttpTransport implements HttpTransport {
             return;
         }
         final Optional<RateLimitSignal> exhausted = policy.exhaustion(request, response);
-        if (exhausted.isEmpty() || exhausted.get().resetAt() == null) {
+        if (exhausted.isEmpty()) {
             return;
         }
-        gate.block(
-                request,
-                exhausted.get().bucket(),
-                policy.untilReset(exhausted.get().resetAt(), response),
-                ExhaustedRejection.of(response));
+        final RateLimitSignal signal = exhausted.get();
+        final Instant resetAt = signal.resetAt();
+        if (resetAt == null) {
+            return;
+        }
+        gate.block(request, signal.bucket(), policy.untilReset(resetAt, response), ExhaustedRejection.of(response));
     }
 
     private boolean isFinalRateLimit(

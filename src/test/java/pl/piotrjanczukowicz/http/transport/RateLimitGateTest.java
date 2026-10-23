@@ -221,8 +221,7 @@ class RateLimitGateTest {
                 gate.blockFor(request, "bucket-a").orElseThrow().rejection();
 
         assertSoftly(softly -> {
-            softly.assertThat(stored.headers().asMap().keySet())
-                    .noneMatch(name -> "content-length".equalsIgnoreCase(name));
+            softly.assertThat(stored.headers().asMap().keySet()).noneMatch("content-length"::equalsIgnoreCase);
             softly.assertThat(stored.requireBodyBytes()).hasSize(8192);
         });
     }

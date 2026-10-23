@@ -6,6 +6,8 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import java.io.IOException;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import pl.piotrjanczukowicz.test.UnitTest;
 
 @UnitTest
@@ -116,38 +118,13 @@ class RetryAttemptsTest {
         });
     }
 
-    @Test
-    void waitedFor_shouldMoveForward_whenInstantIsLater() {
+    @ParameterizedTest
+    @CsvSource({"10, 20", "20, 10", "20, 20"})
+    void waitedFor_shouldKeepLatestInstant_whenCalledTwice(final long firstSeconds, final long secondSeconds) {
         final RetryAttempts attempts = new RetryAttempts();
-        attempts.waitedFor(BASE.plusSeconds(10));
+        attempts.waitedFor(BASE.plusSeconds(firstSeconds));
 
-        attempts.waitedFor(BASE.plusSeconds(20));
-
-        assertSoftly(softly -> {
-            softly.assertThat(attempts.hasWaitedFor(BASE.plusSeconds(20))).isTrue();
-            softly.assertThat(attempts.hasWaitedFor(BASE.plusSeconds(21))).isFalse();
-        });
-    }
-
-    @Test
-    void waitedFor_shouldKeepLaterInstant_whenInstantIsEarlier() {
-        final RetryAttempts attempts = new RetryAttempts();
-        attempts.waitedFor(BASE.plusSeconds(20));
-
-        attempts.waitedFor(BASE.plusSeconds(10));
-
-        assertSoftly(softly -> {
-            softly.assertThat(attempts.hasWaitedFor(BASE.plusSeconds(20))).isTrue();
-            softly.assertThat(attempts.hasWaitedFor(BASE.plusSeconds(21))).isFalse();
-        });
-    }
-
-    @Test
-    void waitedFor_shouldKeepInstant_whenInstantIsEqual() {
-        final RetryAttempts attempts = new RetryAttempts();
-        attempts.waitedFor(BASE.plusSeconds(20));
-
-        attempts.waitedFor(BASE.plusSeconds(20));
+        attempts.waitedFor(BASE.plusSeconds(secondSeconds));
 
         assertSoftly(softly -> {
             softly.assertThat(attempts.hasWaitedFor(BASE.plusSeconds(20))).isTrue();

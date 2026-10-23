@@ -49,4 +49,18 @@ class MonotonicClockTest {
             softly.assertThat(other).isSameAs(clock);
         });
     }
+
+    @Test
+    void equals_shouldFollowStartInstantAndNanos_whenCompared() {
+        final Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        final MonotonicClock clock = new MonotonicClock(start, 10L);
+
+        assertSoftly(softly -> {
+            softly.assertThat(clock).isEqualTo(clock).hasSameHashCodeAs(new MonotonicClock(start, 10L));
+            softly.assertThat(clock).isEqualTo(new MonotonicClock(start, 10L));
+            softly.assertThat(clock).isNotEqualTo(new MonotonicClock(start, 11L));
+            softly.assertThat(clock).isNotEqualTo(new MonotonicClock(start.plusSeconds(1), 10L));
+            softly.assertThat(clock).isNotEqualTo(null).isNotEqualTo("clock");
+        });
+    }
 }

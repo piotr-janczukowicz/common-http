@@ -10,6 +10,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.URI;
@@ -365,7 +366,7 @@ class ConcurrencyLimitingHttpTransportTest {
             peak.countDown();
             try {
                 if (!peak.await(300, TimeUnit.MILLISECONDS)) {
-                    TimeUnit.MILLISECONDS.sleep(50);
+                    throw new IllegalStateException("the expected number of requests did not arrive together");
                 }
             } finally {
                 inFlight.decrementAndGet();
@@ -392,5 +393,25 @@ class ConcurrencyLimitingHttpTransportTest {
 
     private static HttpResponse ok() {
         return new HttpResponse(200, HttpHeaders.empty(), HttpBody.zeroLength());
+    }
+
+    @Test
+    void stream_shouldPassBulkReadsThrough_whenResponseIsStreaming() throws IOException {
+        final HttpTransport delegate = HttpTransportMocks.mock();
+        when(delegate.stream(any()))
+                .thenReturn(HttpStreamResponse.streaming(
+                        200, HttpHeaders.empty(), new ByteArrayInputStream(new byte[] {1, 2, 3})));
+        final ConcurrencyLimitingHttpTransport transport = new ConcurrencyLimitingHttpTransport(delegate, 1);
+        final byte[] buffer = new byte[3];
+
+        final int read;
+        try (HttpStreamResponse response = transport.stream(REQUEST)) {
+            read = response.body().read(buffer, 0, buffer.length);
+        }
+
+        assertSoftly(softly -> {
+            softly.assertThat(read).isEqualTo(3);
+            softly.assertThat(buffer).containsExactly(1, 2, 3);
+        });
     }
 }

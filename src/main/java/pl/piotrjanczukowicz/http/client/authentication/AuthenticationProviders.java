@@ -65,7 +65,7 @@ public final class AuthenticationProviders {
      * Basic authentication with a fixed user and password, or client ID and client secret. The identity is
      * {@code basic:{user}}, which stays the same when the password rotates. A 401 is not retried.
      *
-     * @param user user name or client ID; it must not be blank or contain {@code :}
+     * @param user username or client ID; it must not be blank or contain {@code :}
      * @param password password or client secret; it must not be blank
      * @return provider that sends {@code Basic} and the Base64 of {@code user:password}; its {@code toString} shows the
      *     user only

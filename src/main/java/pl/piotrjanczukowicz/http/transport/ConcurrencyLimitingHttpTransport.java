@@ -47,7 +47,7 @@ import pl.piotrjanczukowicz.http.NonRetryableIOException;
 public final class ConcurrencyLimitingHttpTransport implements HttpTransport {
 
     private static final Logger LOG = LoggerFactory.getLogger(ConcurrencyLimitingHttpTransport.class);
-    private static final String DELEGATE = "delegate";
+    private static final String DELEGATE_ARGUMENT = "delegate";
     private static final String INTERRUPTED_WAIT = "interrupted while waiting for a free request slot";
 
     private final HttpTransport delegate;
@@ -67,7 +67,7 @@ public final class ConcurrencyLimitingHttpTransport implements HttpTransport {
      */
     public ConcurrencyLimitingHttpTransport(
             final HttpTransport delegate, final int maxConcurrent, final Duration maxSlotWait) {
-        this.delegate = requireNonNull(delegate, DELEGATE);
+        this.delegate = requireNonNull(delegate, DELEGATE_ARGUMENT);
         this.maxConcurrent = requirePositive(maxConcurrent, "maxConcurrent");
         this.slots = new Semaphore(maxConcurrent, true);
         this.maxSlotWait = HttpTransportConfiguration.requireSlotWait(maxSlotWait);
@@ -113,6 +113,9 @@ public final class ConcurrencyLimitingHttpTransport implements HttpTransport {
      *     interrupted or exceeded {@code maxSlotWait}
      */
     @Override
+    @SuppressWarnings(
+            "java:S1181") // An Error while wrapping must not leak the slot, so it is caught, cleaned up after, and
+    // rethrown.
     public HttpStreamResponse stream(final HttpRequest request) throws IOException {
         acquire();
         final AtomicBoolean isReleased = new AtomicBoolean();
@@ -148,6 +151,7 @@ public final class ConcurrencyLimitingHttpTransport implements HttpTransport {
         }
     }
 
+    @SuppressWarnings("java:S2142") // toInterruptedIo restores the interrupt flag before the exception is built.
     private boolean tryAcquireSlot() throws NonRetryableIOException {
         try {
             return slots.tryAcquire(maxSlotWait.toNanos(), TimeUnit.NANOSECONDS);
@@ -199,6 +203,11 @@ public final class ConcurrencyLimitingHttpTransport implements HttpTransport {
         SlotReleasingInputStream(final InputStream body, final Runnable onClose) {
             super(body);
             this.onClose = onClose;
+        }
+
+        @Override
+        public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+            return in.read(buffer, offset, length);
         }
 
         @Override

@@ -217,7 +217,7 @@ class HttpBodyTest {
 
         final var openStream = body.openStream();
 
-        final Throwable thrown = catchThrowable(() -> openStream.readAllBytes());
+        final Throwable thrown = catchThrowable(openStream::readAllBytes);
 
         assertThat(thrown).isInstanceOf(IOException.class);
     }

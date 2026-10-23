@@ -377,6 +377,7 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
     }
 
     // An observer is for looking, so what it throws never reaches the caller of the request.
+    @SuppressWarnings("java:S2259") // Only called when callObserver is set; requireNonNull never returns null.
     private void notifyObserver(final HttpCallEvent event) {
         try {
             requireNonNull(callObserver, "callObserver").onCall(event);
@@ -390,9 +391,9 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
 
     private HttpRequest httpRequest(final HttpCall call) throws IOException {
         final ParsedUrl url = resolveUrl(call);
-        // A call that sets its own Authorization is sent for another principal than the client's, so the client's
-        // credentials are not even asked for (that could fetch a token, or fail), and it must not share the client's
-        // identity in the per-credential state of the transports.
+        // A call that sets its own Authorization is sent for another principal than the client's. The client's
+        // credentials are not asked for, because that could fetch a token or fail. The request also must not share the
+        // identity of the client in the per-credential state of the transports.
         final Authentication authentication = hasOwnAuthorization(call) ? null : authentication();
         final HttpHeaders headers = buildHeaders(call.headers(), authentication);
         final String credentialId = authentication == null ? null : authentication.identity();

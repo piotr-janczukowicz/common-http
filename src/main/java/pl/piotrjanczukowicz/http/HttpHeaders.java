@@ -38,7 +38,7 @@ import org.jspecify.annotations.Nullable;
 public final class HttpHeaders {
 
     private static final String NAME = "name";
-    private static final String HEADERS = "headers";
+    private static final String HEADERS_ARGUMENT = "headers";
 
     private static final HttpHeaders EMPTY_REQUEST = new HttpHeaders(Map.of(), Profile.REQUEST);
     private static final HttpHeaders EMPTY_RESPONSE = new HttpHeaders(Map.of(), Profile.RESPONSE);
@@ -196,10 +196,10 @@ public final class HttpHeaders {
      *     rules
      */
     public HttpHeaders merge(final HttpHeaders first, final HttpHeaders... more) {
-        requireNonNull(first, HEADERS);
+        requireNonNull(first, HEADERS_ARGUMENT);
         requireNonNull(more, "more");
         for (final HttpHeaders layer : more) {
-            requireNonNull(layer, HEADERS);
+            requireNonNull(layer, HEADERS_ARGUMENT);
         }
         if (first.isEmpty() && Arrays.stream(more).allMatch(HttpHeaders::isEmpty)) {
             return this;

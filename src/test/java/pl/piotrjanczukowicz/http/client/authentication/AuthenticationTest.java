@@ -7,6 +7,8 @@ import static pl.piotrjanczukowicz.http.HttpHeaderNames.AUTHORIZATION;
 
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import pl.piotrjanczukowicz.http.Digests;
 import pl.piotrjanczukowicz.http.HttpHeaderNames;
 import pl.piotrjanczukowicz.http.client.authentication.Authentication.Type;
@@ -142,23 +144,10 @@ class AuthenticationTest {
         assertThat(parsed).contains(Authentication.ofBasic("app1.abc", "s3cr3t"));
     }
 
-    @Test
-    void parse_shouldBeEmpty_whenSchemeUnknown() {
-        final Optional<Authentication> parsed = Authentication.parse("Digest abc");
-
-        assertThat(parsed).isEmpty();
-    }
-
-    @Test
-    void parse_shouldBeEmpty_whenNoSpace() {
-        final Optional<Authentication> parsed = Authentication.parse("Bearer");
-
-        assertThat(parsed).isEmpty();
-    }
-
-    @Test
-    void parse_shouldBeEmpty_whenCredentialBlank() {
-        final Optional<Authentication> parsed = Authentication.parse("Bearer   ");
+    @ParameterizedTest
+    @ValueSource(strings = {"Digest abc", "Bearer", "Bearer   "})
+    void parse_shouldBeEmpty_whenHeaderCannotBeRead(final String header) {
+        final Optional<Authentication> parsed = Authentication.parse(header);
 
         assertThat(parsed).isEmpty();
     }

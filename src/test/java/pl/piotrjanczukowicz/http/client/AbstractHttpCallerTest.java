@@ -830,11 +830,11 @@ class AbstractHttpCallerTest {
 
             assertThat(thrown).isInstanceOf(ResponseTooLargeException.class);
         }
-        assertThat(tempDir.toFile().list()).isEmpty();
+        assertThat(tempDir).isEmptyDirectory();
     }
 
     @Test
-    void download_shouldThrow_whenLimitNegative() throws IOException {
+    void download_shouldThrow_whenLimitNegative() {
         final Path target = tempDir.resolve("negative.bin");
 
         try (final HttpClient client = client()) {
