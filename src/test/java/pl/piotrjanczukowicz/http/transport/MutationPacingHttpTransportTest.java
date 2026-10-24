@@ -11,8 +11,6 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,20 +19,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import pl.piotrjanczukowicz.http.HttpBody;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
-import pl.piotrjanczukowicz.http.HttpResponse;
-import pl.piotrjanczukowicz.http.HttpStreamResponse;
 import pl.piotrjanczukowicz.http.NonRetryableIOException;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.ScriptedTransport;
+import pl.piotrjanczukowicz.testsupport.MutableClock;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class MutationPacingHttpTransportTest {
@@ -48,9 +43,9 @@ class MutationPacingHttpTransportTest {
 
     @Test
     void execute_shouldNotDelayGet_whenGetsFollowEachOther() throws IOException {
-        final ManualClock clock = new ManualClock(START);
+        final MutableClock clock = new MutableClock(START);
         final RecordingSleeper sleeper = new RecordingSleeper(clock);
-        final RecordingDelegate delegate = new RecordingDelegate(clock);
+        final ScriptedTransport delegate = ScriptedTransport.replying().withClock(clock);
         final MutationPacingHttpTransport transport = paced(delegate.transport(), clock, sleeper);
 
         transport.execute(GET_REQUEST);
@@ -59,23 +54,25 @@ class MutationPacingHttpTransportTest {
 
         assertSoftly(softly -> {
             softly.assertThat(sleeper.sleeps).isEmpty();
-            softly.assertThat(delegate.calls.get()).isEqualTo(3);
+            softly.assertThat(delegate.calls()).isEqualTo(3);
         });
     }
 
     @Test
     void execute_shouldSpaceStartsByInterval_whenPostsFollowEachOther() throws IOException {
-        final ManualClock clock = new ManualClock(START);
+        final MutableClock clock = new MutableClock(START);
         final RecordingSleeper sleeper = new RecordingSleeper(clock);
-        final RecordingDelegate delegate = new RecordingDelegate(clock);
+        final ScriptedTransport delegate = ScriptedTransport.replying().withClock(clock);
         final MutationPacingHttpTransport transport = paced(delegate.transport(), clock, sleeper);
 
         transport.execute(POST_REQUEST);
         transport.execute(POST_REQUEST);
 
         assertSoftly(softly -> {
-            softly.assertThat(delegate.startedAt).hasSize(2);
-            softly.assertThat(Duration.between(delegate.startedAt.getFirst(), delegate.startedAt.get(1)))
+            softly.assertThat(delegate.startedAt()).hasSize(2);
+            softly.assertThat(Duration.between(
+                            delegate.startedAt().getFirst(),
+                            delegate.startedAt().get(1)))
                     .isGreaterThanOrEqualTo(INTERVAL);
             softly.assertThat(sleeper.sleeps).containsExactly(INTERVAL);
         });
@@ -83,15 +80,15 @@ class MutationPacingHttpTransportTest {
 
     @Test
     void execute_shouldSerialiseStartsByInterval_whenMutationsRunConcurrently() throws Exception {
-        final ManualClock clock = new ManualClock(START);
+        final MutableClock clock = new MutableClock(START);
         final RecordingSleeper sleeper = new RecordingSleeper(clock);
-        final RecordingDelegate delegate = new RecordingDelegate(clock);
+        final ScriptedTransport delegate = ScriptedTransport.replying().withClock(clock);
         final MutationPacingHttpTransport transport = paced(delegate.transport(), clock, sleeper);
 
         runConcurrently(CONCURRENT_CALLERS, () -> transport.execute(POST_REQUEST));
 
         assertSoftly(softly -> {
-            softly.assertThat(delegate.calls.get()).isEqualTo(CONCURRENT_CALLERS);
+            softly.assertThat(delegate.calls()).isEqualTo(CONCURRENT_CALLERS);
             softly.assertThat(sleeper.sleeps).hasSize(CONCURRENT_CALLERS - 1).containsOnly(INTERVAL);
             softly.assertThat(clock.instant()).isEqualTo(START.plus(INTERVAL.multipliedBy(CONCURRENT_CALLERS - 1L)));
         });
@@ -99,9 +96,9 @@ class MutationPacingHttpTransportTest {
 
     @Test
     void stream_shouldSpaceStartsByInterval_whenPostsStream() throws IOException {
-        final ManualClock clock = new ManualClock(START);
+        final MutableClock clock = new MutableClock(START);
         final RecordingSleeper sleeper = new RecordingSleeper(clock);
-        final RecordingDelegate delegate = new RecordingDelegate(clock);
+        final ScriptedTransport delegate = ScriptedTransport.replying().withClock(clock);
         final MutationPacingHttpTransport transport = paced(delegate.transport(), clock, sleeper);
 
         transport.stream(POST_REQUEST);
@@ -112,8 +109,8 @@ class MutationPacingHttpTransportTest {
 
     @Test
     void execute_shouldThrowInterruptedIoAndRestoreFlag_whenInterruptedWhileWaiting() throws IOException {
-        final ManualClock clock = new ManualClock(START);
-        final RecordingDelegate delegate = new RecordingDelegate(clock);
+        final MutableClock clock = new MutableClock(START);
+        final ScriptedTransport delegate = ScriptedTransport.replying().withClock(clock);
         final MutationPacingHttpTransport transport = paced(delegate.transport(), clock, interruptingSleeper());
         transport.execute(POST_REQUEST);
 
@@ -123,13 +120,13 @@ class MutationPacingHttpTransportTest {
         assertSoftly(softly -> {
             softly.assertThat(thrown).isInstanceOf(InterruptedIOException.class);
             softly.assertThat(isInterrupted).isTrue();
-            softly.assertThat(delegate.calls.get()).isEqualTo(1);
+            softly.assertThat(delegate.calls()).isEqualTo(1);
         });
     }
 
     @Test
     void execute_shouldThrowInterruptedIoAndRestoreFlag_whenInterruptedBeforeStarting() throws IOException {
-        final RecordingDelegate delegate = new RecordingDelegate(Clock.systemUTC());
+        final ScriptedTransport delegate = ScriptedTransport.replying();
         final MutationPacingHttpTransport transport = new MutationPacingHttpTransport(
                 delegate.transport(), INTERVAL, MutationPacingHttpTransport.DEFAULT_MUTATION_METHODS);
         transport.execute(POST_REQUEST);
@@ -141,15 +138,16 @@ class MutationPacingHttpTransportTest {
         assertSoftly(softly -> {
             softly.assertThat(thrown).isInstanceOf(InterruptedIOException.class);
             softly.assertThat(isInterrupted).isTrue();
-            softly.assertThat(delegate.calls.get()).isEqualTo(1);
+            softly.assertThat(delegate.calls()).isEqualTo(1);
         });
     }
 
     @Test
     void execute_shouldWaitAtMostOneInterval_whenClockMovedBack() throws IOException {
-        final ManualClock clock = new ManualClock(START);
+        final MutableClock clock = new MutableClock(START);
         final RecordingSleeper sleeper = new RecordingSleeper(clock);
-        final MutationPacingHttpTransport transport = paced(new RecordingDelegate(clock).transport(), clock, sleeper);
+        final MutationPacingHttpTransport transport =
+                paced(ScriptedTransport.replying().withClock(clock).transport(), clock, sleeper);
         transport.execute(POST_REQUEST);
         clock.advance(Duration.ofHours(-1));
 
@@ -160,9 +158,10 @@ class MutationPacingHttpTransportTest {
 
     @Test
     void execute_shouldNotWait_whenIntervalHasAlreadyElapsed() throws IOException {
-        final ManualClock clock = new ManualClock(START);
+        final MutableClock clock = new MutableClock(START);
         final RecordingSleeper sleeper = new RecordingSleeper(clock);
-        final MutationPacingHttpTransport transport = paced(new RecordingDelegate(clock).transport(), clock, sleeper);
+        final MutationPacingHttpTransport transport =
+                paced(ScriptedTransport.replying().withClock(clock).transport(), clock, sleeper);
         transport.execute(POST_REQUEST);
         clock.advance(INTERVAL.plusSeconds(1));
 
@@ -173,32 +172,33 @@ class MutationPacingHttpTransportTest {
 
     @Test
     void execute_shouldWaitInRealTime_whenPublicConstructorUsed() throws IOException {
-        final RecordingDelegate delegate = new RecordingDelegate(Clock.systemUTC());
+        final ScriptedTransport delegate = ScriptedTransport.replying();
         final MutationPacingHttpTransport transport = new MutationPacingHttpTransport(
                 delegate.transport(), Duration.ofMillis(100), MutationPacingHttpTransport.DEFAULT_MUTATION_METHODS);
         transport.execute(POST_REQUEST);
 
         transport.execute(POST_REQUEST);
 
-        assertThat(Duration.between(delegate.startedAt.getFirst(), delegate.startedAt.get(1)))
+        assertThat(Duration.between(
+                        delegate.startedAt().getFirst(), delegate.startedAt().get(1)))
                 .isGreaterThanOrEqualTo(Duration.ofMillis(50));
     }
 
     @Test
     void close_shouldCloseDelegate_whenCalled() {
-        final RecordingDelegate delegate = new RecordingDelegate(Clock.systemUTC());
+        final ScriptedTransport delegate = ScriptedTransport.replying();
         final MutationPacingHttpTransport transport = new MutationPacingHttpTransport(
                 delegate.transport(), INTERVAL, MutationPacingHttpTransport.DEFAULT_MUTATION_METHODS);
 
         transport.close();
 
-        assertThat(delegate.isClosed.get()).isTrue();
+        assertThat(delegate.isClosed()).isTrue();
     }
 
     @Test
     void execute_shouldFailWithoutSending_whenTransportClosed() {
-        final ManualClock clock = new ManualClock(START);
-        final RecordingDelegate delegate = new RecordingDelegate(clock);
+        final MutableClock clock = new MutableClock(START);
+        final ScriptedTransport delegate = ScriptedTransport.replying().withClock(clock);
         final MutationPacingHttpTransport transport = paced(delegate.transport(), clock, new RecordingSleeper(clock));
         transport.close();
 
@@ -206,14 +206,14 @@ class MutationPacingHttpTransportTest {
 
         assertSoftly(softly -> {
             softly.assertThat(thrown).isInstanceOf(NonRetryableIOException.class);
-            softly.assertThat(delegate.calls.get()).isZero();
+            softly.assertThat(delegate.calls()).isZero();
         });
     }
 
     @Test
     void execute_shouldFailWithoutSending_whenTransportClosedWhileWaiting() throws IOException {
-        final ManualClock clock = new ManualClock(START);
-        final RecordingDelegate delegate = new RecordingDelegate(clock);
+        final MutableClock clock = new MutableClock(START);
+        final ScriptedTransport delegate = ScriptedTransport.replying().withClock(clock);
         final AtomicReference<MutationPacingHttpTransport> holder = new AtomicReference<>();
         final MutationPacingHttpTransport transport = paced(delegate.transport(), clock, duration -> {
             clock.advance(duration);
@@ -226,14 +226,14 @@ class MutationPacingHttpTransportTest {
 
         assertSoftly(softly -> {
             softly.assertThat(thrown).isInstanceOf(NonRetryableIOException.class);
-            softly.assertThat(delegate.calls.get()).isEqualTo(1);
+            softly.assertThat(delegate.calls()).isEqualTo(1);
         });
     }
 
     @ParameterizedTest
     @ValueSource(longs = {0L, -1L})
     void constructor_shouldRejectInterval_whenNotPositive(final long millis) {
-        final RecordingDelegate delegate = new RecordingDelegate(Clock.systemUTC());
+        final ScriptedTransport delegate = ScriptedTransport.replying();
 
         final var transport = delegate.transport();
         final var duration = Duration.ofMillis(millis);
@@ -246,7 +246,7 @@ class MutationPacingHttpTransportTest {
 
     @Test
     void constructor_shouldRejectMethods_whenEmpty() {
-        final RecordingDelegate delegate = new RecordingDelegate(Clock.systemUTC());
+        final ScriptedTransport delegate = ScriptedTransport.replying();
 
         final var transport = delegate.transport();
 
@@ -283,10 +283,6 @@ class MutationPacingHttpTransportTest {
                 method, URI.create("https://api.example.test/repos/owner/repo/issues"), HttpHeaders.empty(), null);
     }
 
-    private static HttpResponse ok() {
-        return new HttpResponse(200, HttpHeaders.empty(), HttpBody.zeroLength());
-    }
-
     private static void runConcurrently(final int callers, final IoCall call) throws Exception {
         final ExecutorService executor = Executors.newFixedThreadPool(callers);
         try {
@@ -310,40 +306,12 @@ class MutationPacingHttpTransportTest {
         void run() throws IOException;
     }
 
-    private static final class ManualClock extends Clock {
-
-        private final AtomicReference<Instant> now;
-
-        private ManualClock(final Instant start) {
-            this.now = new AtomicReference<>(start);
-        }
-
-        private void advance(final Duration duration) {
-            now.updateAndGet(current -> current.plus(duration));
-        }
-
-        @Override
-        public Instant instant() {
-            return now.get();
-        }
-
-        @Override
-        public ZoneId getZone() {
-            return ZoneOffset.UTC;
-        }
-
-        @Override
-        public Clock withZone(final ZoneId zone) {
-            throw new UnsupportedOperationException();
-        }
-    }
-
     private static final class RecordingSleeper implements MutationPacingHttpTransport.Sleeper {
 
-        private final ManualClock clock;
+        private final MutableClock clock;
         private final List<Duration> sleeps = Collections.synchronizedList(new ArrayList<>());
 
-        private RecordingSleeper(final ManualClock clock) {
+        private RecordingSleeper(final MutableClock clock) {
             this.clock = clock;
         }
 
@@ -351,41 +319,6 @@ class MutationPacingHttpTransportTest {
         public void sleep(final Duration duration) {
             sleeps.add(duration);
             clock.advance(duration);
-        }
-    }
-
-    private static final class RecordingDelegate {
-
-        private final Clock clock;
-        private final List<Instant> startedAt = Collections.synchronizedList(new ArrayList<>());
-        private final AtomicInteger calls = new AtomicInteger();
-        private final AtomicBoolean isClosed = new AtomicBoolean();
-
-        private RecordingDelegate(final Clock clock) {
-            this.clock = clock;
-        }
-
-        private HttpTransport transport() {
-            return HttpTransportMocks.mock(invocation -> {
-                final String method = invocation.getMethod().getName();
-                switch (method) {
-                    case "execute" -> {
-                        recordStart();
-                        return ok();
-                    }
-                    case "stream" -> {
-                        recordStart();
-                        return HttpStreamResponse.buffered(ok());
-                    }
-                    case "close" -> isClosed.set(true);
-                }
-                return null;
-            });
-        }
-
-        private void recordStart() {
-            startedAt.add(clock.instant());
-            calls.incrementAndGet();
         }
     }
 }

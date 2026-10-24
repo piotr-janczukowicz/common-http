@@ -8,7 +8,7 @@ import static pl.piotrjanczukowicz.http.HttpHeaderNames.ACCEPT;
 import java.net.URI;
 import org.junit.jupiter.api.Test;
 import pl.piotrjanczukowicz.http.HttpHeaders;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class HttpClientConfigurationTest {

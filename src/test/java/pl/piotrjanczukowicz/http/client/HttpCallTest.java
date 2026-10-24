@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import pl.piotrjanczukowicz.http.HttpBody;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class HttpCallTest {

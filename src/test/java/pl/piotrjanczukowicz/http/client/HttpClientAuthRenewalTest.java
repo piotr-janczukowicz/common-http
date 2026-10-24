@@ -31,8 +31,8 @@ import pl.piotrjanczukowicz.http.client.authentication.Authentication;
 import pl.piotrjanczukowicz.http.client.authentication.AuthenticationProvider;
 import pl.piotrjanczukowicz.http.client.authentication.AuthenticationProviders;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
-import pl.piotrjanczukowicz.http.transport.HttpTransportMocks;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpTransportMocks;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class HttpClientAuthRenewalTest {

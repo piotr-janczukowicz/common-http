@@ -8,7 +8,8 @@ import org.junit.jupiter.api.Test;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
 import pl.piotrjanczukowicz.http.transport.HttpTransports;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.ScriptedHttpServer;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class ScriptedHttpServerTest {

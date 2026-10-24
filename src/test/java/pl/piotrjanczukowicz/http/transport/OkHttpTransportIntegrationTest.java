@@ -11,7 +11,7 @@ import static pl.piotrjanczukowicz.http.HttpStatus.CREATED;
 import static pl.piotrjanczukowicz.http.HttpStatus.FOUND;
 import static pl.piotrjanczukowicz.http.HttpStatus.NO_CONTENT;
 import static pl.piotrjanczukowicz.http.HttpStatus.OK;
-import static pl.piotrjanczukowicz.http.support.StubHttpServer.status;
+import static pl.piotrjanczukowicz.test.http.StubHttpServer.status;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -37,7 +37,10 @@ import java.util.zip.GZIPOutputStream;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.function.ThrowingConsumer;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import pl.piotrjanczukowicz.http.HttpBody;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
@@ -47,12 +50,12 @@ import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.HttpStreamResponse;
 import pl.piotrjanczukowicz.http.NonRetryableIOException;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
-import pl.piotrjanczukowicz.http.support.DropMidRequestServer;
-import pl.piotrjanczukowicz.http.support.LargeContentLengthServer;
-import pl.piotrjanczukowicz.http.support.ScriptedHttpServer;
-import pl.piotrjanczukowicz.http.support.StallAfterHeadersServer;
-import pl.piotrjanczukowicz.http.support.StubHttpServer;
-import pl.piotrjanczukowicz.test.IntegrationTest;
+import pl.piotrjanczukowicz.test.http.ScriptedHttpServer;
+import pl.piotrjanczukowicz.test.http.StubHttpServer;
+import pl.piotrjanczukowicz.testsupport.DropMidRequestServer;
+import pl.piotrjanczukowicz.testsupport.IntegrationTest;
+import pl.piotrjanczukowicz.testsupport.LargeContentLengthServer;
+import pl.piotrjanczukowicz.testsupport.StallAfterHeadersServer;
 
 @IntegrationTest
 class OkHttpTransportIntegrationTest {
@@ -384,18 +387,41 @@ class OkHttpTransportIntegrationTest {
                 },
                 BODY_SIZE);
 
+        assertFailsAfterPriming(POST, body);
+
+        assertThat(opened).hasValue(1);
+    }
+
+    private void assertFailsAfterPriming(final HttpMethod method, final HttpBody body) throws Exception {
         try (final DropMidRequestServer server = new DropMidRequestServer();
                 final HttpTransport transport = newTransport()) {
             transport.execute(new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null));
-
-            final var request = new HttpRequest(POST, server.uri(), HttpHeaders.empty(), body);
+            final var request = new HttpRequest(method, server.uri(), HttpHeaders.empty(), body);
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
             assertThat(thrown).isInstanceOf(IOException.class);
-            assertThat(opened).hasValue(1);
             assertThat(server.connections()).isEqualTo(1);
         }
+    }
+
+    private HttpRequest slowRequest() {
+        return new HttpRequest(GET, http.uri("/slow"), HttpHeaders.empty(), null);
+    }
+
+    private void assertInFlightCallReportsClosed(final ThrowingConsumer<HttpTransport> call) throws Exception {
+        http.stub(GET, "/slow", status(OK).delay(Duration.ofSeconds(10)));
+        final HttpTransport transport = newTransport();
+        final AtomicReference<Throwable> thrown = new AtomicReference<>();
+        final Thread caller = new Thread(() -> thrown.set(catchThrowable(() -> call.accept(transport))));
+        caller.start();
+        http.awaitRequested(GET, "/slow", Duration.ofSeconds(5));
+
+        transport.close();
+        final boolean finished = caller.join(Duration.ofSeconds(5));
+
+        assertThat(finished).isTrue();
+        assertThat(thrown.get()).isInstanceOf(NonRetryableIOException.class).hasMessage("transport closed");
     }
 
     @Test
@@ -426,19 +452,7 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldNotResendBytesBody_whenPooledConnectionDropsMidRequest() throws Exception {
-        final HttpBody body = HttpBody.of(new byte[BODY_SIZE]);
-
-        try (final DropMidRequestServer server = new DropMidRequestServer();
-                final HttpTransport transport = newTransport()) {
-            transport.execute(new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null));
-
-            final var request = new HttpRequest(POST, server.uri(), HttpHeaders.empty(), body);
-
-            final Throwable thrown = catchThrowable(() -> transport.execute(request));
-
-            assertThat(thrown).isInstanceOf(IOException.class);
-            assertThat(server.connections()).isEqualTo(1);
-        }
+        assertFailsAfterPriming(POST, HttpBody.of(new byte[BODY_SIZE]));
     }
 
     @Test
@@ -446,17 +460,7 @@ class OkHttpTransportIntegrationTest {
         final Path file = tempDir.resolve("upload.bin");
         Files.write(file, new byte[BODY_SIZE]);
 
-        try (final DropMidRequestServer server = new DropMidRequestServer();
-                final HttpTransport transport = newTransport()) {
-            transport.execute(new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null));
-
-            final var request = new HttpRequest(PATCH, server.uri(), HttpHeaders.empty(), HttpBody.ofFile(file));
-
-            final Throwable thrown = catchThrowable(() -> transport.execute(request));
-
-            assertThat(thrown).isInstanceOf(IOException.class);
-            assertThat(server.connections()).isEqualTo(1);
-        }
+        assertFailsAfterPriming(PATCH, HttpBody.ofFile(file));
     }
 
     @Test
@@ -592,19 +596,12 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldReportClosed_whenInFlightCallCancelledByClose() throws Exception {
-        http.stub(GET, "/slow", status(OK).delay(Duration.ofSeconds(10)));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/slow"), HttpHeaders.empty(), null);
-        final HttpTransport transport = newTransport();
-        final AtomicReference<Throwable> thrown = new AtomicReference<>();
-        final Thread caller = new Thread(() -> thrown.set(catchThrowable(() -> transport.execute(request))));
-        caller.start();
-        http.awaitRequested(GET, "/slow", Duration.ofSeconds(5));
+        assertInFlightCallReportsClosed(transport -> transport.execute(slowRequest()));
+    }
 
-        transport.close();
-        final boolean finished = caller.join(Duration.ofSeconds(5));
-
-        assertThat(finished).isTrue();
-        assertThat(thrown.get()).isInstanceOf(NonRetryableIOException.class).hasMessage("transport closed");
+    @Test
+    void stream_shouldReportClosed_whenInFlightCallCancelledByClose() throws Exception {
+        assertInFlightCallReportsClosed(transport -> transport.stream(slowRequest()));
     }
 
     @Test
@@ -631,24 +628,11 @@ class OkHttpTransportIntegrationTest {
         }
     }
 
-    @Test
-    void execute_shouldThrowNonRetryable_whenStreamLongerThanAnnounced() {
+    @ParameterizedTest
+    @ValueSource(ints = {8, 2})
+    void execute_shouldThrowNonRetryable_whenStreamLengthDiffersFromAnnounced(final int actualLength) {
         http.stub(POST, "/upload", OK.code());
-        final HttpBody body = HttpBody.ofStream(() -> new ByteArrayInputStream(new byte[8]), 4);
-
-        try (final HttpTransport transport = newTransport()) {
-            final var request = new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body);
-
-            final Throwable thrown = catchThrowable(() -> transport.execute(request));
-
-            assertThat(thrown).isInstanceOf(NonRetryableIOException.class).hasMessageContaining("Content-Length of 4");
-        }
-    }
-
-    @Test
-    void execute_shouldThrowNonRetryable_whenStreamShorterThanAnnounced() {
-        http.stub(POST, "/upload", OK.code());
-        final HttpBody body = HttpBody.ofStream(() -> new ByteArrayInputStream(new byte[2]), 4);
+        final HttpBody body = HttpBody.ofStream(() -> new ByteArrayInputStream(new byte[actualLength]), 4);
 
         try (final HttpTransport transport = newTransport()) {
             final var request = new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body);
@@ -742,23 +726,6 @@ class OkHttpTransportIntegrationTest {
             gzip.write(plain);
         }
         return compressed.toByteArray();
-    }
-
-    @Test
-    void stream_shouldReportClosed_whenInFlightCallCancelledByClose() throws Exception {
-        http.stub(GET, "/slow", status(OK).delay(Duration.ofSeconds(10)));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/slow"), HttpHeaders.empty(), null);
-        final HttpTransport transport = newTransport();
-        final AtomicReference<Throwable> thrown = new AtomicReference<>();
-        final Thread caller = new Thread(() -> thrown.set(catchThrowable(() -> transport.stream(request))));
-        caller.start();
-        http.awaitRequested(GET, "/slow", Duration.ofSeconds(5));
-
-        transport.close();
-        final boolean finished = caller.join(Duration.ofSeconds(5));
-
-        assertThat(finished).isTrue();
-        assertThat(thrown.get()).isInstanceOf(NonRetryableIOException.class).hasMessage("transport closed");
     }
 
     @Test

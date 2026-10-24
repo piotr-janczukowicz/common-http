@@ -5,9 +5,7 @@ import static pl.piotrjanczukowicz.util.IoUtils.closeSuppressing;
 import static pl.piotrjanczukowicz.util.ValidationUtils.requireNonNull;
 import static pl.piotrjanczukowicz.util.ValidationUtils.requirePositive;
 
-import java.io.FilterInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.time.Duration;
 import java.util.concurrent.Semaphore;
@@ -169,7 +167,7 @@ public final class ConcurrencyLimitingHttpTransport implements HttpTransport {
         return HttpStreamResponse.streaming(
                 opened.statusCode(),
                 opened.headers(),
-                new SlotReleasingInputStream(opened.body(), () -> release(isReleased)));
+                new OnCloseInputStream(opened.body(), () -> release(isReleased)));
     }
 
     private HttpStreamResponse releaseSlotFor(final HttpStreamResponse buffered, final AtomicBoolean isReleased) {
@@ -193,30 +191,6 @@ public final class ConcurrencyLimitingHttpTransport implements HttpTransport {
     private void release(final AtomicBoolean isReleased) {
         if (isReleased.compareAndSet(false, true)) {
             slots.release();
-        }
-    }
-
-    private static final class SlotReleasingInputStream extends FilterInputStream {
-
-        private final Runnable onClose;
-
-        SlotReleasingInputStream(final InputStream body, final Runnable onClose) {
-            super(body);
-            this.onClose = onClose;
-        }
-
-        @Override
-        public int read(final byte[] buffer, final int offset, final int length) throws IOException {
-            return in.read(buffer, offset, length);
-        }
-
-        @Override
-        public void close() throws IOException {
-            try {
-                super.close();
-            } finally {
-                onClose.run();
-            }
         }
     }
 }

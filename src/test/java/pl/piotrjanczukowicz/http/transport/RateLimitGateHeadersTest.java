@@ -9,7 +9,7 @@ import java.lang.reflect.Constructor;
 import org.junit.jupiter.api.Test;
 import pl.piotrjanczukowicz.http.HttpHeaderNames;
 import pl.piotrjanczukowicz.http.HttpHeaders;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class RateLimitGateHeadersTest {

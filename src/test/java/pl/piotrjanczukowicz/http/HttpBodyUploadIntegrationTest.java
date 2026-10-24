@@ -6,7 +6,7 @@ import static pl.piotrjanczukowicz.http.HttpHeaderNames.RETRY_AFTER;
 import static pl.piotrjanczukowicz.http.HttpMethod.POST;
 import static pl.piotrjanczukowicz.http.HttpStatus.OK;
 import static pl.piotrjanczukowicz.http.HttpStatus.TOO_MANY_REQUESTS;
-import static pl.piotrjanczukowicz.http.support.StubHttpServer.status;
+import static pl.piotrjanczukowicz.test.http.StubHttpServer.status;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
@@ -17,13 +17,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
-import pl.piotrjanczukowicz.http.support.StubHttpServer;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
 import pl.piotrjanczukowicz.http.transport.HttpTransportConfiguration;
 import pl.piotrjanczukowicz.http.transport.HttpTransports;
 import pl.piotrjanczukowicz.http.transport.RetryConfiguration;
 import pl.piotrjanczukowicz.http.transport.RetryingHttpTransport;
-import pl.piotrjanczukowicz.test.IntegrationTest;
+import pl.piotrjanczukowicz.test.http.StubHttpServer;
+import pl.piotrjanczukowicz.testsupport.IntegrationTest;
 
 @IntegrationTest
 class HttpBodyUploadIntegrationTest {

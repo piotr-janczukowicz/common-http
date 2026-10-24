@@ -43,12 +43,15 @@ import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
-import pl.piotrjanczukowicz.http.HttpResponses;
 import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.HttpStreamResponse;
-import pl.piotrjanczukowicz.http.support.MutableClock;
 import pl.piotrjanczukowicz.http.uri.ParsedUrl;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpResponses;
+import pl.piotrjanczukowicz.test.http.HttpTransportMocks;
+import pl.piotrjanczukowicz.test.http.RateLimitDetectors;
+import pl.piotrjanczukowicz.test.http.TestRetryingTransports;
+import pl.piotrjanczukowicz.testsupport.MutableClock;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class RetryingHttpTransportRateLimitTest {

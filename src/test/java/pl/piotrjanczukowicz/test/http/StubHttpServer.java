@@ -1,4 +1,4 @@
-package pl.piotrjanczukowicz.http.support;
+package pl.piotrjanczukowicz.test.http;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -140,6 +140,34 @@ public final class StubHttpServer implements BeforeAllCallback, AfterAllCallback
         requireNonNull(value, "value");
         ensureStarted();
         server.verify(pattern(method, path).withHeader(name, equalTo(value)));
+    }
+
+    public void verifyNoHeader(final HttpMethod method, final String path, final String name) {
+        requireNonNull(method, "method");
+        requireNonNull(name, "name");
+        ensureStarted();
+        server.verify(pattern(method, path).withHeader(name, absent()));
+    }
+
+    public void verifyQueryParam(final HttpMethod method, final String path, final String name, final String value) {
+        requireNonNull(method, "method");
+        requireNonNull(name, "name");
+        requireNonNull(value, "value");
+        ensureStarted();
+        server.verify(pattern(method, path).withQueryParam(name, equalTo(value)));
+    }
+
+    public void verifyNoQueryParam(final HttpMethod method, final String path, final String name) {
+        requireNonNull(method, "method");
+        requireNonNull(name, "name");
+        ensureStarted();
+        server.verify(pattern(method, path).withQueryParam(name, absent()));
+    }
+
+    public void verifyAbsentBody(final HttpMethod method, final String path) {
+        requireNonNull(method, "method");
+        ensureStarted();
+        server.verify(pattern(method, path).withRequestBody(absent()));
     }
 
     public void verifyBody(final HttpMethod method, final String path, final String body) {

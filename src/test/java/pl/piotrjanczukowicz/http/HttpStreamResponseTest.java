@@ -9,7 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class HttpStreamResponseTest {

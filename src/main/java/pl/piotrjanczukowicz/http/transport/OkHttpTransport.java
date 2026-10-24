@@ -2,9 +2,7 @@ package pl.piotrjanczukowicz.http.transport;
 
 import static pl.piotrjanczukowicz.util.ValidationUtils.requireNonNull;
 
-import java.io.FilterInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -202,7 +200,7 @@ final class OkHttpTransport implements HttpTransport {
         return HttpStreamResponse.streaming(
                 response.code(),
                 fromOkHttpHeaders(response.headers()),
-                new ReleasingInputStream(requireNonNull(response.body(), "body").byteStream(), () -> release(call)));
+                new OnCloseInputStream(requireNonNull(response.body(), "body").byteStream(), () -> release(call)));
     }
 
     // Registers the call before it starts, so that close() can cancel it; a call registered after close() began never
@@ -325,30 +323,5 @@ final class OkHttpTransport implements HttpTransport {
             wire.computeIfAbsent(headers.name(i), name -> new ArrayList<>(2)).add(headers.value(i));
         }
         return HttpHeaders.fromWire(wire);
-    }
-
-    /** Body stream of a streamed response that tells the transport when the caller has closed it. */
-    private static final class ReleasingInputStream extends FilterInputStream {
-
-        private final Runnable onClose;
-
-        ReleasingInputStream(final InputStream in, final Runnable onClose) {
-            super(in);
-            this.onClose = onClose;
-        }
-
-        @Override
-        public int read(final byte[] buffer, final int offset, final int length) throws IOException {
-            return in.read(buffer, offset, length);
-        }
-
-        @Override
-        public void close() throws IOException {
-            try {
-                super.close();
-            } finally {
-                onClose.run();
-            }
-        }
     }
 }

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,35 +22,39 @@ import static pl.piotrjanczukowicz.http.HttpHeaderNames.LAST_MODIFIED;
 import static pl.piotrjanczukowicz.http.HttpHeaderNames.LINK;
 import static pl.piotrjanczukowicz.http.HttpHeaderNames.RANGE;
 import static pl.piotrjanczukowicz.http.HttpHeaderNames.VARY;
+import static pl.piotrjanczukowicz.test.http.HttpResponses.response;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import pl.piotrjanczukowicz.http.HttpBody;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
-import pl.piotrjanczukowicz.http.HttpResponses;
 import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.HttpStreamResponse;
 import pl.piotrjanczukowicz.http.uri.ParsedUrl;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpTransportMocks;
+import pl.piotrjanczukowicz.test.http.ScriptedTransport;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class ConditionalCachingHttpTransportTest {
@@ -68,32 +71,50 @@ class ConditionalCachingHttpTransportTest {
     private static final String VERSION_HEADER = "X-Api-Version";
     private static final String REMAINING_HEADER = "X-Remaining";
 
+    private static ConditionalCachingHttpTransport cached(final ScriptedTransport delegate) {
+        return cached(delegate.transport());
+    }
+
     private static ConditionalCachingHttpTransport cached(final HttpTransport delegate) {
         return new ConditionalCachingHttpTransport(
                 delegate, MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
     }
 
+    /** A cache whose first request already got a 200 with an ETag; {@code afterFirst} are the replies that follow. */
+    private static CachedFixture primedCache(final HttpResponse... afterFirst) throws Exception {
+        final List<HttpResponse> replies = new ArrayList<>();
+        replies.add(cacheable());
+        replies.addAll(List.of(afterFirst));
+        final ScriptedTransport delegate = ScriptedTransport.replying(replies.toArray(HttpResponse[]::new));
+        final CachedFixture fixture = new CachedFixture(delegate, cached(delegate));
+        fixture.get();
+        return fixture;
+    }
+
+    private record CachedFixture(ScriptedTransport delegate, ConditionalCachingHttpTransport transport) {
+
+        HttpResponse get() throws Exception {
+            return transport.execute(ConditionalCachingHttpTransportTest.get(URL, HttpHeaders.empty()));
+        }
+    }
+
     @Test
     void execute_shouldReturnStoredBody_whenNotModified() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE), response(304, null, ETAG, ETAG_VALUE));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
+        final CachedFixture cache = primedCache(response(304, null, ETAG, ETAG_VALUE));
 
-        final HttpResponse response = transport.execute(get(URL, HttpHeaders.empty()));
+        final HttpResponse response = cache.get();
 
         assertSoftly(softly -> {
             softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.code());
             softly.assertThat(text(response)).isEqualTo(BODY);
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH))
-                    .contains(ETAG_VALUE);
+            softly.assertThat(ifNoneMatch(cache.delegate(), 1)).contains(ETAG_VALUE);
         });
     }
 
     @Test
     void execute_shouldSendIfModifiedSince_whenOnlyLastModifiedKept() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, LAST_MODIFIED, LAST_MODIFIED_VALUE), response(304, null));
+        final ScriptedTransport delegate = ScriptedTransport.replying(
+                response(200, BODY, LAST_MODIFIED, LAST_MODIFIED_VALUE), response(304, null));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
@@ -101,16 +122,15 @@ class ConditionalCachingHttpTransportTest {
 
         assertSoftly(softly -> {
             softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.code());
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_MODIFIED_SINCE))
+            softly.assertThat(delegate.request(1).headers().get(IF_MODIFIED_SINCE))
                     .contains(LAST_MODIFIED_VALUE);
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH))
-                    .isEmpty();
+            softly.assertThat(ifNoneMatch(delegate, 1)).isEmpty();
         });
     }
 
     @Test
     void execute_shouldSendBothValidators_whenEtagAndLastModifiedKept() throws Exception {
-        final HttpTransport delegate = scripted(
+        final ScriptedTransport delegate = ScriptedTransport.replying(
                 response(200, BODY, ETAG, ETAG_VALUE, LAST_MODIFIED, LAST_MODIFIED_VALUE), response(304, null));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
@@ -118,63 +138,45 @@ class ConditionalCachingHttpTransportTest {
         transport.execute(get(URL, HttpHeaders.empty()));
 
         assertSoftly(softly -> {
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH))
-                    .contains(ETAG_VALUE);
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_MODIFIED_SINCE))
+            softly.assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
+            softly.assertThat(delegate.request(1).headers().get(IF_MODIFIED_SINCE))
                     .contains(LAST_MODIFIED_VALUE);
         });
     }
 
     @Test
     void execute_shouldNotCache_whenResponseHasNoValidator() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(response(200, BODY), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
-    }
-
-    @Test
-    void execute_shouldDropEntry_whenConditionalRequestGetsStatusThatIsNotKept() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE), response(404, "{}"), response(200, BODY));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(URL, HttpHeaders.empty()));
-
-        transport.execute(get(URL, HttpHeaders.empty()));
-
-        assertThat(sentRequest(delegate, 2).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldPassRangeRequestThrough_whenFullResponseIsKept() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE), response(206, "{\"na", ETAG, ETAG_VALUE));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
+        final CachedFixture cache = primedCache(response(206, "{\"na", ETAG, ETAG_VALUE));
 
-        final HttpResponse response = transport.execute(get(URL, HttpHeaders.of(RANGE, "bytes=0-3")));
+        final HttpResponse response = cache.transport().execute(get(URL, HttpHeaders.of(RANGE, "bytes=0-3")));
 
         assertSoftly(softly -> {
             softly.assertThat(response.statusCode()).isEqualTo(206);
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH))
-                    .isEmpty();
+            softly.assertThat(ifNoneMatch(cache.delegate(), 1)).isEmpty();
         });
     }
 
     @Test
     void execute_shouldNotKeepResponse_whenStatusIsPartialContent() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(206, BODY, ETAG, ETAG_VALUE), response(200, BODY, ETAG, ETAG_VALUE));
+        final ScriptedTransport delegate =
+                ScriptedTransport.replying(response(206, BODY, ETAG, ETAG_VALUE), cacheable());
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.of(RANGE, "bytes=0-4")));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
@@ -184,9 +186,7 @@ class ConditionalCachingHttpTransportTest {
                 return null;
             }
             final HttpRequest sent = invocation.getArgument(0);
-            return sent.headers().get(IF_NONE_MATCH).isPresent()
-                    ? response(304, null, ETAG, ETAG_VALUE)
-                    : response(200, BODY, ETAG, ETAG_VALUE);
+            return sent.headers().get(IF_NONE_MATCH).isPresent() ? response(304, null, ETAG, ETAG_VALUE) : cacheable();
         });
         final ConditionalCachingHttpTransport transport =
                 new ConditionalCachingHttpTransport(delegate, 4, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
@@ -217,190 +217,176 @@ class ConditionalCachingHttpTransportTest {
         assertThat(answered).isEqualTo(threads * rounds);
     }
 
-    @Test
-    void execute_shouldDropEntry_whenConditionalRequestGetsGone() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE), response(410, "{}"), response(200, BODY));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(URL, HttpHeaders.empty()));
-
-        transport.execute(get(URL, HttpHeaders.empty()));
-
-        assertThat(sentRequest(delegate, 2).headers().get(IF_NONE_MATCH)).isEmpty();
-    }
-
     @ParameterizedTest
-    @ValueSource(ints = {403, 429, 500, 503})
-    void execute_shouldKeepEntry_whenConditionalRequestGetsStatusThatSaysNothingAboutTheCopy(final int status)
-            throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE), response(status, "{}"), response(304, null));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(URL, HttpHeaders.empty()));
+    @CsvSource({"404,false", "410,false", "403,true", "429,true", "500,true", "503,true"})
+    void execute_shouldKeepEntryOnlyWhenStatusSaysNothingAboutCopy_whenConditionalRequestGetsStatus(
+            final int secondStatus, final boolean expectIfNoneMatch) throws Exception {
+        final HttpResponse third = expectIfNoneMatch ? response(304, null) : response(200, BODY);
+        final CachedFixture cache = primedCache(response(secondStatus, "{}"), third);
+        cache.get();
 
-        transport.execute(get(URL, HttpHeaders.empty()));
+        cache.get();
 
-        assertThat(sentRequest(delegate, 2).headers().get(IF_NONE_MATCH)).contains(ETAG_VALUE);
+        assertThat(ifNoneMatch(cache.delegate(), 2))
+                .isEqualTo(expectIfNoneMatch ? Optional.of(ETAG_VALUE) : Optional.empty());
     }
 
     @Test
     void execute_shouldDropEntry_whenConditionalRequestGetsNoStoreResponse() throws Exception {
-        final HttpTransport delegate = scripted(
-                response(200, BODY, ETAG, ETAG_VALUE),
-                response(200, BODY, ETAG, ETAG_VALUE, CACHE_CONTROL, "no-store"),
-                response(200, BODY));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(URL, HttpHeaders.empty()));
+        final CachedFixture cache =
+                primedCache(response(200, BODY, ETAG, ETAG_VALUE, CACHE_CONTROL, "no-store"), response(200, BODY));
+        cache.get();
 
-        transport.execute(get(URL, HttpHeaders.empty()));
+        cache.get();
 
-        assertThat(sentRequest(delegate, 2).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(cache.delegate(), 2)).isEmpty();
     }
 
     @Test
     void execute_shouldNotCache_whenStatusIsNotOk() throws Exception {
-        final HttpTransport delegate = scripted(response(404, "{}", ETAG, ETAG_VALUE), response(200, BODY));
+        final ScriptedTransport delegate =
+                ScriptedTransport.replying(response(404, "{}", ETAG, ETAG_VALUE), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
-    @Test
-    void execute_shouldNotShareEntry_whenCredentialDiffers() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY));
+    @ParameterizedTest
+    @MethodSource("differingCredentials")
+    void execute_shouldNotShareEntry_whenCredentialDiffers(final HttpRequest first, final HttpRequest second)
+            throws Exception {
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer one")));
+        transport.execute(first);
 
-        transport.execute(get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer two")));
+        transport.execute(second);
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
-    @Test
-    void execute_shouldNotShareEntry_whenCredentialIdDiffers() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer same"), "app:1/installation:1"));
-
-        transport.execute(get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer same"), "app:1/installation:2"));
-
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+    private static Stream<Arguments> differingCredentials() {
+        return Stream.of(
+                Arguments.of(
+                        get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer one")),
+                        get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer two"))),
+                Arguments.of(
+                        get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer same"), "app:1/installation:1"),
+                        get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer same"), "app:1/installation:2")));
     }
 
     @Test
     void execute_shouldSendConditionalRequest_whenCredentialIdRepeats() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(304, null));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(304, null));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer one"), "app:1/installation:1"));
 
         transport.execute(get(URL, HttpHeaders.of(AUTHORIZATION, "Bearer two"), "app:1/installation:1"));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).contains(ETAG_VALUE);
+        assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
     }
 
     @Test
     void execute_shouldNotShareEntry_whenAcceptDiffers() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.of(ACCEPT, "application/json")));
 
         transport.execute(get(URL, HttpHeaders.of(ACCEPT, "application/vnd.example.raw")));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldNotShareEntry_whenVaryingHeaderDiffers() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(200, BODY));
         final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
-                delegate, 16, 1024, MAX_TOTAL_BYTES, Set.of(ACCEPT, VERSION_HEADER));
+                delegate.transport(), 16, 1024, MAX_TOTAL_BYTES, Set.of(ACCEPT, VERSION_HEADER));
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2026-03-10")));
 
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2022-11-28")));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldNotShareEntry_whenAcceptEncodingDiffers() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.of(ACCEPT_ENCODING, "gzip")));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldRevalidate_whenVaryHeaderValueMatches() throws Exception {
-        final HttpTransport delegate = scripted(
+        final ScriptedTransport delegate = ScriptedTransport.replying(
                 response(200, BODY, ETAG, ETAG_VALUE, VARY, VERSION_HEADER), response(304, null, ETAG, ETAG_VALUE));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2026-03-10")));
 
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2026-03-10")));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).contains(ETAG_VALUE);
+        assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
     }
 
     @Test
     void execute_shouldNotRevalidate_whenVaryHeaderValueDiffers() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE, VARY, VERSION_HEADER), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(
+                response(200, BODY, ETAG, ETAG_VALUE, VARY, VERSION_HEADER), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2026-03-10")));
 
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2022-11-28")));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldNotKeep_whenVaryIsStar() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE, VARY, "*"), response(200, BODY));
+        final ScriptedTransport delegate =
+                ScriptedTransport.replying(response(200, BODY, ETAG, ETAG_VALUE, VARY, "*"), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldSkipEmptyVaryElements_whenVaryListsThem() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE, VARY, "X-One, , X-Two"), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(
+                response(200, BODY, ETAG, ETAG_VALUE, VARY, "X-One, , X-Two"), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).contains(ETAG_VALUE);
+        assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
     }
 
     @Test
     void execute_shouldNotKeep_whenBodyLengthIsUnknown() throws Exception {
-        final HttpTransport delegate = scripted(response(200, null, ETAG, ETAG_VALUE), response(200, BODY));
+        final ScriptedTransport delegate =
+                ScriptedTransport.replying(response(200, null, ETAG, ETAG_VALUE), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldReturnResponse_whenEntryWasEvictedDuringRevalidation() throws Exception {
         final AtomicReference<ConditionalCachingHttpTransport> transport = new AtomicReference<>();
         final Deque<HttpResponse> responses = new ArrayDeque<>();
-        responses.add(response(200, BODY, ETAG, ETAG_VALUE));
+        responses.add(cacheable());
         responses.add(response(404, null));
         final HttpTransport delegate = HttpTransportMocks.mock(invocation -> {
             if (!"execute".equals(invocation.getMethod().getName())) {
@@ -409,7 +395,7 @@ class ConditionalCachingHttpTransportTest {
             if (responses.size() == 1 && transport.get() != null) {
                 // another request keeps its copy meanwhile and, with room for one entry, pushes this one out
                 final ConditionalCachingHttpTransport self = transport.getAndSet(null);
-                responses.addFirst(response(200, BODY, ETAG, ETAG_VALUE));
+                responses.addFirst(cacheable());
                 self.execute(get(OTHER_URL, HttpHeaders.empty()));
             }
             return responses.poll();
@@ -426,25 +412,25 @@ class ConditionalCachingHttpTransportTest {
 
     @Test
     void execute_shouldIgnoreVersionHeader_whenHeaderNotVarying() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(304, null));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(304, null));
         final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
-                delegate, MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
+                delegate.transport(), MAX_ENTRIES, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2026-03-10")));
 
         transport.execute(get(URL, HttpHeaders.of(VERSION_HEADER, "2022-11-28")));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).contains(ETAG_VALUE);
+        assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
     }
 
     @Test
     void execute_shouldNotShareEntry_whenQueryDiffers() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL + "?page=1", HttpHeaders.empty()));
 
         transport.execute(get(URL + "?page=2", HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @ParameterizedTest
@@ -452,7 +438,7 @@ class ConditionalCachingHttpTransportTest {
             value = HttpMethod.class,
             names = {"POST", "PUT", "PATCH", "DELETE"})
     void execute_shouldNotCacheOrRevalidate_whenMethodIsNotGet(final HttpMethod method) throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(request(method, URL, HttpHeaders.empty()));
 
@@ -460,14 +446,13 @@ class ConditionalCachingHttpTransportTest {
 
         assertSoftly(softly -> {
             softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.code());
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH))
-                    .isEmpty();
+            softly.assertThat(ifNoneMatch(delegate, 1)).isEmpty();
         });
     }
 
     @Test
     void execute_shouldPassThroughWithCallerIfNoneMatch_whenCallerSetsIt() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(304, null));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(304, null));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
@@ -475,15 +460,14 @@ class ConditionalCachingHttpTransportTest {
 
         assertSoftly(softly -> {
             softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.NOT_MODIFIED.code());
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH))
-                    .contains("W/\"caller\"");
-            softly.assertThat(requestCount(delegate)).isEqualTo(2);
+            softly.assertThat(ifNoneMatch(delegate, 1)).contains("W/\"caller\"");
+            softly.assertThat(delegate.calls()).isEqualTo(2);
         });
     }
 
     @Test
     void execute_shouldPassThroughWithCallerIfModifiedSince_whenCallerSetsIt() throws Exception {
-        final HttpTransport delegate = scripted(response(200, BODY, ETAG, ETAG_VALUE), response(304, null));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), response(304, null));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
@@ -492,16 +476,15 @@ class ConditionalCachingHttpTransportTest {
 
         assertSoftly(softly -> {
             softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.NOT_MODIFIED.code());
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_MODIFIED_SINCE))
+            softly.assertThat(delegate.request(1).headers().get(IF_MODIFIED_SINCE))
                     .contains(LAST_MODIFIED_VALUE);
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH))
-                    .isEmpty();
+            softly.assertThat(ifNoneMatch(delegate, 1)).isEmpty();
         });
     }
 
     @Test
     void execute_shouldReturnNotModifiedUnchanged_whenNoEntryKept() throws Exception {
-        final HttpTransport delegate = scripted(response(304, null, ETAG, ETAG_VALUE));
+        final ScriptedTransport delegate = ScriptedTransport.replying(response(304, null, ETAG, ETAG_VALUE));
         final ConditionalCachingHttpTransport transport = cached(delegate);
 
         final HttpResponse response = transport.execute(get(URL, HttpHeaders.empty()));
@@ -509,63 +492,55 @@ class ConditionalCachingHttpTransportTest {
         assertSoftly(softly -> {
             softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.NOT_MODIFIED.code());
             softly.assertThat(response.etag()).contains(ETAG_VALUE);
-            softly.assertThat(requestCount(delegate)).isEqualTo(1);
+            softly.assertThat(delegate.calls()).isEqualTo(1);
         });
     }
 
     @Test
     void execute_shouldEvictLeastRecentlyUsed_whenMaxEntriesExceeded() throws Exception {
         final String urlC = "https://api.example.test/repos/owner/third";
-        final HttpTransport delegate = scripted(
-                response(200, BODY, ETAG, ETAG_VALUE),
+        final ScriptedTransport delegate = ScriptedTransport.replying(
+                cacheable(),
                 response(200, BODY, ETAG, ETAG_NEXT),
                 response(304, null),
                 response(200, BODY, ETAG, "W/\"third\""),
                 response(200, BODY));
-        final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate, 2, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(OTHER_URL, HttpHeaders.empty()));
-        transport.execute(get(URL, HttpHeaders.empty()));
+        final ConditionalCachingHttpTransport transport = new ConditionalCachingHttpTransport(
+                delegate.transport(), 2, MAX_BODY_BYTES, MAX_TOTAL_BYTES, Set.of(ACCEPT));
+        fetch(transport, URL, OTHER_URL, URL);
         transport.execute(get(urlC, HttpHeaders.empty()));
 
         transport.execute(get(OTHER_URL, HttpHeaders.empty()));
 
         assertSoftly(softly -> {
-            softly.assertThat(sentRequest(delegate, 2).headers().get(IF_NONE_MATCH))
-                    .contains(ETAG_VALUE);
-            softly.assertThat(sentRequest(delegate, 4).headers().get(IF_NONE_MATCH))
-                    .isEmpty();
+            softly.assertThat(ifNoneMatch(delegate, 2)).contains(ETAG_VALUE);
+            softly.assertThat(ifNoneMatch(delegate, 4)).isEmpty();
         });
     }
 
     @Test
     void execute_shouldNotKeepBody_whenLargerThanLimit() throws Exception {
-        final HttpTransport delegate = scripted(
+        final ScriptedTransport delegate = ScriptedTransport.replying(
                 response(200, "12345", ETAG, ETAG_VALUE),
                 response(200, "1234", ETAG, ETAG_NEXT),
                 response(200, "12345", ETAG, ETAG_VALUE),
                 response(304, null));
         final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate, 16, 4, MAX_TOTAL_BYTES, Set.of(ACCEPT));
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(OTHER_URL, HttpHeaders.empty()));
+                new ConditionalCachingHttpTransport(delegate.transport(), 16, 4, MAX_TOTAL_BYTES, Set.of(ACCEPT));
+        fetch(transport, URL, OTHER_URL);
 
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(OTHER_URL, HttpHeaders.empty()));
+        fetch(transport, URL, OTHER_URL);
 
         assertSoftly(softly -> {
-            softly.assertThat(sentRequest(delegate, 2).headers().get(IF_NONE_MATCH))
-                    .isEmpty();
-            softly.assertThat(sentRequest(delegate, 3).headers().get(IF_NONE_MATCH))
-                    .contains(ETAG_NEXT);
+            softly.assertThat(ifNoneMatch(delegate, 2)).isEmpty();
+            softly.assertThat(ifNoneMatch(delegate, 3)).contains(ETAG_NEXT);
         });
     }
 
     @Test
     void execute_shouldOverlayRateLimitHeaders_whenNotModified() throws Exception {
         final String link = "<https://api.example.test/repos/owner/repo/issues?page=2>; rel=\"next\"";
-        final HttpTransport delegate = scripted(
+        final ScriptedTransport delegate = ScriptedTransport.replying(
                 response(
                         200,
                         BODY,
@@ -608,17 +583,13 @@ class ConditionalCachingHttpTransportTest {
 
     @Test
     void execute_shouldSendRefreshedEtag_whenNotModifiedCarriesNewEtag() throws Exception {
-        final HttpTransport delegate = scripted(
-                response(200, BODY, ETAG, ETAG_VALUE), response(304, null, ETAG, ETAG_NEXT), response(304, null));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(URL, HttpHeaders.empty()));
+        final CachedFixture cache = primedCache(response(304, null, ETAG, ETAG_NEXT), response(304, null));
+        cache.get();
 
-        final HttpResponse response = transport.execute(get(URL, HttpHeaders.empty()));
+        final HttpResponse response = cache.get();
 
         assertSoftly(softly -> {
-            softly.assertThat(sentRequest(delegate, 2).headers().get(IF_NONE_MATCH))
-                    .contains(ETAG_NEXT);
+            softly.assertThat(ifNoneMatch(cache.delegate(), 2)).contains(ETAG_NEXT);
             softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.code());
             softly.assertThat(response.etag()).contains(ETAG_NEXT);
         });
@@ -649,7 +620,7 @@ class ConditionalCachingHttpTransportTest {
 
     @Test
     void constructor_shouldThrow_whenDelegateNull() {
-        final Throwable thrown = catchThrowable(() -> cached(null));
+        final Throwable thrown = catchThrowable(() -> cached((HttpTransport) null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("delegate");
     }
@@ -694,7 +665,7 @@ class ConditionalCachingHttpTransportTest {
     void execute_shouldEvictLeastRecentlyUsed_whenTotalBytesExceeded() throws Exception {
         final String kilobyteAndAHalf = "x".repeat(1536);
         final String urlC = "https://api.example.test/repos/owner/third";
-        final HttpTransport delegate = scripted(
+        final ScriptedTransport delegate = ScriptedTransport.replying(
                 response(200, kilobyteAndAHalf, ETAG, ETAG_VALUE),
                 response(200, kilobyteAndAHalf, ETAG, ETAG_NEXT),
                 response(200, kilobyteAndAHalf, ETAG, "W/\"third\""),
@@ -702,9 +673,8 @@ class ConditionalCachingHttpTransportTest {
                 response(304, null),
                 response(200, BODY));
         final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate, 16, MAX_BODY_BYTES, 3 * 1024, Set.of(ACCEPT));
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(OTHER_URL, HttpHeaders.empty()));
+                new ConditionalCachingHttpTransport(delegate.transport(), 16, MAX_BODY_BYTES, 3 * 1024, Set.of(ACCEPT));
+        fetch(transport, URL, OTHER_URL);
         transport.execute(get(urlC, HttpHeaders.empty()));
 
         transport.execute(get(OTHER_URL, HttpHeaders.empty()));
@@ -712,139 +682,124 @@ class ConditionalCachingHttpTransportTest {
         transport.execute(get(URL, HttpHeaders.empty()));
 
         assertSoftly(softly -> {
-            softly.assertThat(sentRequest(delegate, 3).headers().get(IF_NONE_MATCH))
-                    .contains(ETAG_NEXT);
-            softly.assertThat(sentRequest(delegate, 4).headers().get(IF_NONE_MATCH))
-                    .contains("W/\"third\"");
-            softly.assertThat(sentRequest(delegate, 5).headers().get(IF_NONE_MATCH))
-                    .isEmpty();
+            softly.assertThat(ifNoneMatch(delegate, 3)).contains(ETAG_NEXT);
+            softly.assertThat(ifNoneMatch(delegate, 4)).contains("W/\"third\"");
+            softly.assertThat(ifNoneMatch(delegate, 5)).isEmpty();
         });
     }
 
     @Test
     void execute_shouldNotDoubleCountBytes_whenEntryReplaced() throws Exception {
         final String kilobyteAndAHalf = "x".repeat(1536);
-        final HttpTransport delegate = scripted(
+        final ScriptedTransport delegate = ScriptedTransport.replying(
                 response(200, kilobyteAndAHalf, ETAG, ETAG_VALUE),
                 response(200, kilobyteAndAHalf, ETAG, ETAG_NEXT),
                 response(200, kilobyteAndAHalf, ETAG, "W/\"other\""),
                 response(304, null),
                 response(304, null));
         final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate, 16, MAX_BODY_BYTES, 3 * 1024, Set.of(ACCEPT));
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(OTHER_URL, HttpHeaders.empty()));
+                new ConditionalCachingHttpTransport(delegate.transport(), 16, MAX_BODY_BYTES, 3 * 1024, Set.of(ACCEPT));
+        fetch(transport, URL, URL, OTHER_URL);
 
-        transport.execute(get(URL, HttpHeaders.empty()));
-        transport.execute(get(OTHER_URL, HttpHeaders.empty()));
+        fetch(transport, URL, OTHER_URL);
 
         assertSoftly(softly -> {
-            softly.assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH))
-                    .contains(ETAG_VALUE);
-            softly.assertThat(sentRequest(delegate, 3).headers().get(IF_NONE_MATCH))
-                    .contains(ETAG_NEXT);
-            softly.assertThat(sentRequest(delegate, 4).headers().get(IF_NONE_MATCH))
-                    .contains("W/\"other\"");
+            softly.assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
+            softly.assertThat(ifNoneMatch(delegate, 3)).contains(ETAG_NEXT);
+            softly.assertThat(ifNoneMatch(delegate, 4)).contains("W/\"other\"");
         });
     }
 
     @Test
     void execute_shouldNotKeepBody_whenLargerThanTotalLimit() throws Exception {
-        final HttpTransport delegate = scripted(response(200, "12345", ETAG, ETAG_VALUE), response(200, BODY));
+        final ScriptedTransport delegate =
+                ScriptedTransport.replying(response(200, "12345", ETAG, ETAG_VALUE), response(200, BODY));
         final ConditionalCachingHttpTransport transport =
-                new ConditionalCachingHttpTransport(delegate, 16, MAX_BODY_BYTES, 4, Set.of(ACCEPT));
+                new ConditionalCachingHttpTransport(delegate.transport(), 16, MAX_BODY_BYTES, 4, Set.of(ACCEPT));
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldNotKeepResponse_whenRequestHasNoStore() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY, ETAG, ETAG_VALUE));
+        final ScriptedTransport delegate = ScriptedTransport.replying(cacheable(), cacheable());
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.of(CACHE_CONTROL, "no-store")));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldBypassKeptCopy_whenRequestHasNoStoreAmongOtherDirectives() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE), response(200, BODY, ETAG, ETAG_VALUE));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
+        final CachedFixture cache = primedCache(cacheable());
 
-        transport.execute(get(URL, HttpHeaders.of(CACHE_CONTROL, "max-age=0, No-Store")));
+        cache.transport().execute(get(URL, HttpHeaders.of(CACHE_CONTROL, "max-age=0, No-Store")));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(cache.delegate(), 1)).isEmpty();
     }
 
     @Test
     void execute_shouldRevalidateKeptCopy_whenRequestHasNoCache() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE), response(304, null, ETAG, ETAG_VALUE));
-        final ConditionalCachingHttpTransport transport = cached(delegate);
-        transport.execute(get(URL, HttpHeaders.empty()));
+        final CachedFixture cache = primedCache(response(304, null, ETAG, ETAG_VALUE));
 
         final HttpResponse response =
-                transport.execute(get(URL, HttpHeaders.of(CACHE_CONTROL, "no-cache", "Pragma", "no-cache")));
+                cache.transport().execute(get(URL, HttpHeaders.of(CACHE_CONTROL, "no-cache", "Pragma", "no-cache")));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).contains(ETAG_VALUE);
+        assertThat(ifNoneMatch(cache.delegate(), 1)).contains(ETAG_VALUE);
         assertThat(response.statusCode()).isEqualTo(200);
     }
 
     @Test
     void execute_shouldNotRevalidate_whenCacheControlHasNoStore() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE, CACHE_CONTROL, "no-store"), response(200, BODY));
+        final ScriptedTransport delegate = ScriptedTransport.replying(
+                response(200, BODY, ETAG, ETAG_VALUE, CACHE_CONTROL, "no-store"), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldNotRevalidate_whenCacheControlHasNoStoreAmongOtherDirectives() throws Exception {
-        final HttpTransport delegate = scripted(
+        final ScriptedTransport delegate = ScriptedTransport.replying(
                 response(200, BODY, ETAG, ETAG_VALUE, CACHE_CONTROL, "Private, NO-STORE"), response(200, BODY));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).isEmpty();
+        assertThat(ifNoneMatch(delegate, 1)).isEmpty();
     }
 
     @Test
     void execute_shouldKeepEntry_whenCacheControlHasOnlyMaxAge() throws Exception {
-        final HttpTransport delegate = scripted(
+        final ScriptedTransport delegate = ScriptedTransport.replying(
                 response(200, BODY, ETAG, ETAG_VALUE, CACHE_CONTROL, "private, max-age=60"), response(304, null));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).contains(ETAG_VALUE);
+        assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
     }
 
     @Test
     void execute_shouldKeepEntry_whenNoStoreIsPartOfAnotherToken() throws Exception {
-        final HttpTransport delegate =
-                scripted(response(200, BODY, ETAG, ETAG_VALUE, CACHE_CONTROL, "x-no-store"), response(304, null));
+        final ScriptedTransport delegate = ScriptedTransport.replying(
+                response(200, BODY, ETAG, ETAG_VALUE, CACHE_CONTROL, "x-no-store"), response(304, null));
         final ConditionalCachingHttpTransport transport = cached(delegate);
         transport.execute(get(URL, HttpHeaders.empty()));
 
         transport.execute(get(URL, HttpHeaders.empty()));
 
-        assertThat(sentRequest(delegate, 1).headers().get(IF_NONE_MATCH)).contains(ETAG_VALUE);
+        assertThat(ifNoneMatch(delegate, 1)).contains(ETAG_VALUE);
     }
 
     @Test
@@ -867,43 +822,25 @@ class ConditionalCachingHttpTransportTest {
         return new HttpRequest(HttpMethod.GET, ParsedUrl.of(URI.create(url)), headers, HttpBody.absent(), credentialId);
     }
 
+    private static void fetch(final ConditionalCachingHttpTransport transport, final String... urls) throws Exception {
+        for (final String url : urls) {
+            transport.execute(get(url, HttpHeaders.empty()));
+        }
+    }
+
+    private static Optional<String> ifNoneMatch(final ScriptedTransport delegate, final int index) {
+        return delegate.request(index).headers().get(IF_NONE_MATCH);
+    }
+
+    private static HttpResponse cacheable() {
+        return response(200, BODY, ETAG, ETAG_VALUE);
+    }
+
     private static HttpRequest request(final HttpMethod method, final String url, final HttpHeaders headers) {
         return new HttpRequest(method, ParsedUrl.of(URI.create(url)), headers, HttpBody.absent());
     }
 
-    private static HttpResponse response(final int status, final String body, final String... namesAndValues) {
-        final Map<String, List<String>> headers = new LinkedHashMap<>();
-        for (int i = 0; i < namesAndValues.length; i += 2) {
-            headers.put(namesAndValues[i], List.of(namesAndValues[i + 1]));
-        }
-        final HttpBody content = body == null ? HttpBody.absent() : HttpBody.of(body.getBytes(StandardCharsets.UTF_8));
-        return HttpResponses.of(status, headers, content);
-    }
-
     private static String text(final HttpResponse response) {
         return new String(response.requireBodyBytes(), StandardCharsets.UTF_8);
-    }
-
-    private static HttpTransport scripted(final HttpResponse first, final HttpResponse... rest) {
-        final Deque<HttpResponse> responses = new ArrayDeque<>();
-        responses.add(first);
-        responses.addAll(List.of(rest));
-        return HttpTransportMocks.mock(
-                invocation -> "execute".equals(invocation.getMethod().getName()) ? responses.poll() : null);
-    }
-
-    private static List<HttpRequest> executions(final HttpTransport delegate) {
-        return mockingDetails(delegate).getInvocations().stream()
-                .filter(invocation -> "execute".equals(invocation.getMethod().getName()))
-                .map(invocation -> invocation.<HttpRequest>getArgument(0))
-                .toList();
-    }
-
-    private static HttpRequest sentRequest(final HttpTransport delegate, final int index) {
-        return executions(delegate).get(index);
-    }
-
-    private static int requestCount(final HttpTransport delegate) {
-        return executions(delegate).size();
     }
 }

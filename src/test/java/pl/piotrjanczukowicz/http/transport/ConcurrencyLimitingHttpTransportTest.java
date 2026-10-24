@@ -32,8 +32,9 @@ import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
 import pl.piotrjanczukowicz.http.HttpStreamResponse;
 import pl.piotrjanczukowicz.http.NonRetryableIOException;
-import pl.piotrjanczukowicz.http.support.ScriptedHttpServer;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpTransportMocks;
+import pl.piotrjanczukowicz.test.http.ScriptedHttpServer;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class ConcurrencyLimitingHttpTransportTest {

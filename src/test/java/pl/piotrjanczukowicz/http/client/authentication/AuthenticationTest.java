@@ -12,7 +12,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import pl.piotrjanczukowicz.http.Digests;
 import pl.piotrjanczukowicz.http.HttpHeaderNames;
 import pl.piotrjanczukowicz.http.client.authentication.Authentication.Type;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class AuthenticationTest {

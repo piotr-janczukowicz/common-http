@@ -19,14 +19,14 @@ import org.mockito.ArgumentCaptor;
 import pl.piotrjanczukowicz.http.Digests;
 import pl.piotrjanczukowicz.http.HttpBody;
 import pl.piotrjanczukowicz.http.HttpRequest;
-import pl.piotrjanczukowicz.http.HttpResponses;
 import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.client.HttpCall;
 import pl.piotrjanczukowicz.http.client.HttpClient;
 import pl.piotrjanczukowicz.http.client.HttpClientConfiguration;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
-import pl.piotrjanczukowicz.http.transport.HttpTransportMocks;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpResponses;
+import pl.piotrjanczukowicz.test.http.HttpTransportMocks;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class AuthenticationProvidersTest {

@@ -36,9 +36,9 @@ import pl.piotrjanczukowicz.http.HttpResponse;
 import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.HttpStreamResponse;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
-import pl.piotrjanczukowicz.http.transport.HttpTransportMocks;
 import pl.piotrjanczukowicz.http.uri.ParsedUrl;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpTransportMocks;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class RedirectExecutorTest {
@@ -77,14 +77,7 @@ class RedirectExecutorTest {
         when(transport.execute(any()))
                 .thenReturn(redirect(status, "https://api.example.test/next?token=signed"))
                 .thenReturn(ok());
-        final HttpRequest request = new HttpRequest(
-                method, URI.create("https://api.example.test/start?code=secret"), headers(), HttpBody.of(new byte[] {1
-                }));
-
-        final RedirectExecutor follower = follower();
-        final int maxHops = RedirectPolicy.defaults().maxHops();
-
-        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
+        final Throwable thrown = catchBodyRequestFailure(method, "https://api.example.test/start?code=secret");
 
         assertThat(thrown).isInstanceOf(HttpException.class);
         final HttpException error = (HttpException) thrown;
@@ -188,22 +181,12 @@ class RedirectExecutorTest {
 
     @Test
     void execute_shouldKeepEntityHeadersButNotCredentials_whenBodyFollowsAcrossOrigins() throws IOException {
-        when(transport.execute(any()))
-                .thenReturn(redirect(HttpStatus.TEMPORARY_REDIRECT, "https://other.example.test/next"))
-                .thenReturn(ok());
-        final RedirectPolicy policy =
-                new RedirectPolicy(5, Set.of(HttpMethod.GET, HttpMethod.PUT), Set.of(ACCEPT, USER_AGENT));
-        final RedirectExecutor executor = new RedirectExecutor(
-                transport, policy, HttpException::from, ParsedUrl.of(URI.create("https://api.example.test/")));
-        final HttpRequest request = new HttpRequest(
-                HttpMethod.PUT,
-                URI.create("https://api.example.test/start"),
-                HttpHeaders.empty().merge(headers()).with(CONTENT_TYPE, "application/json"),
-                HttpBody.of(new byte[] {9}));
+        final HttpRequest second = secondRequestAfterPutAcrossOrigins(
+                HttpStatus.TEMPORARY_REDIRECT,
+                "https://other.example.test/next",
+                "/start",
+                HttpHeaders.empty().merge(headers()).with(CONTENT_TYPE, "application/json"));
 
-        executor.execute(request, policy.maxHops(), true);
-
-        final HttpRequest second = secondExecutedRequest();
         assertSoftly(softly -> {
             softly.assertThat(second.headers().get(CONTENT_TYPE)).contains("application/json");
             softly.assertThat(second.headers().get(AUTHORIZATION)).isEmpty();
@@ -300,21 +283,7 @@ class RedirectExecutorTest {
 
     @Test
     void execute_shouldRefusePost_whenCallStartedOutsideApiBaseAndRedirectStaysOutside() throws IOException {
-        when(transport.execute(any()))
-                .thenReturn(redirect(HttpStatus.TEMPORARY_REDIRECT, "https://host.example.test/api/uploads/b"));
-        final HttpRequest request = new HttpRequest(
-                HttpMethod.POST,
-                URI.create("https://host.example.test/api/uploads/a"),
-                headers(),
-                HttpBody.of(new byte[] {1}));
-        final RedirectExecutor follower = follower(ParsedUrl.of(URI.create("https://host.example.test/svc/v1/")));
-        final int maxHops = RedirectPolicy.defaults().maxHops();
-
-        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
-
-        assertThat(thrown)
-                .isInstanceOf(HttpException.class)
-                .hasMessage("redirect outside the API base path not followed for POST");
+        assertPostRefused("https://host.example.test/api/uploads/a", "https://host.example.test/api/uploads/b");
     }
 
     @Test
@@ -334,22 +303,7 @@ class RedirectExecutorTest {
 
     @Test
     void execute_shouldRefusePost_whenSameOriginRedirectLeavesApiBase() throws IOException {
-        when(transport.execute(any()))
-                .thenReturn(redirect(HttpStatus.TEMPORARY_REDIRECT, "https://host.example.test/other-app/x"));
-        final HttpRequest request = new HttpRequest(
-                HttpMethod.POST,
-                URI.create("https://host.example.test/svc/v1/user"),
-                headers(),
-                HttpBody.of(new byte[] {1}));
-        final RedirectExecutor follower = follower(ParsedUrl.of(URI.create("https://host.example.test/svc/v1/")));
-        final int maxHops = RedirectPolicy.defaults().maxHops();
-
-        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
-
-        assertThat(thrown)
-                .isInstanceOf(HttpException.class)
-                .hasMessage("redirect outside the API base path not followed for POST");
-        verify(transport, times(1)).execute(any());
+        assertPostRefused("https://host.example.test/svc/v1/user", "https://host.example.test/other-app/x");
     }
 
     @Test
@@ -384,13 +338,7 @@ class RedirectExecutorTest {
     @Test
     void execute_shouldRefusePost_whenCrossOrigin() throws IOException {
         when(transport.execute(any())).thenReturn(redirect(HttpStatus.TEMPORARY_REDIRECT, "https://example.test/user"));
-        final HttpRequest request = new HttpRequest(
-                HttpMethod.POST, URI.create("https://api.example.test/user"), headers(), HttpBody.of(new byte[] {1}));
-
-        final RedirectExecutor follower = follower();
-        final int maxHops = RedirectPolicy.defaults().maxHops();
-
-        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
+        final Throwable thrown = catchBodyRequestFailure(HttpMethod.POST, "https://api.example.test/user");
 
         assertThat(thrown).isInstanceOf(HttpException.class).hasMessage("cross-origin redirect not followed for POST");
         verify(transport, times(1)).execute(any());
@@ -571,18 +519,9 @@ class RedirectExecutorTest {
 
     @Test
     void stream_shouldStripAuth_whenCrossOriginGet() throws IOException {
-        final HttpStreamResponse redirect =
-                HttpStreamResponse.buffered(redirect(HttpStatus.FOUND, "https://example.test/user"));
-        final HttpStreamResponse ok = HttpStreamResponse.streaming(
-                HttpStatus.OK.code(), HttpHeaders.empty(), new ByteArrayInputStream(new byte[] {1}));
-        when(transport.stream(any())).thenReturn(redirect, ok);
+        streamAfterRedirect(HttpStatus.FOUND, "https://example.test/user");
 
-        follower().stream(
-                get("https://api.example.test/user"), RedirectPolicy.defaults().maxHops(), true);
-
-        final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(transport, times(2)).stream(captor.capture());
-        final HttpRequest second = captor.getAllValues().get(1);
+        final HttpRequest second = secondStreamedRequest();
         assertSoftly(softly -> {
             softly.assertThat(second.headers().get(AUTHORIZATION)).isEmpty();
             softly.assertThat(second.headers().asMap().keySet())
@@ -590,36 +529,16 @@ class RedirectExecutorTest {
         });
     }
 
-    @Test
-    void stream_shouldKeepOnlyOriginAndPathOfFinalUri_whenRedirectIsCrossOrigin() throws IOException {
-        final HttpStreamResponse redirect =
-                HttpStreamResponse.buffered(redirect(HttpStatus.FOUND, "https://codeload.example/zip?token=signed"));
-        final HttpStreamResponse ok = HttpStreamResponse.streaming(
-                HttpStatus.OK.code(), HttpHeaders.empty(), new ByteArrayInputStream(new byte[] {1}));
-        when(transport.stream(any())).thenReturn(redirect, ok);
+    @ParameterizedTest
+    @CsvSource({
+        "https://codeload.example/zip?token=signed,https://codeload.example/zip",
+        "https://api.example.test/next?page=2,https://api.example.test/next?page=2"
+    })
+    void stream_shouldKeepQueryOnlyOfSameOrigin_whenRedirectFollowed(final String location, final URI expected)
+            throws IOException {
+        final RedirectExecutor.StreamExchange exchange = streamAfterRedirect(HttpStatus.FOUND, location);
 
-        final RedirectExecutor.StreamExchange exchange = follower().stream(
-                get("https://api.example.test/zipball"),
-                RedirectPolicy.defaults().maxHops(),
-                true);
-
-        assertThat(exchange.uri()).isEqualTo(URI.create("https://codeload.example/zip"));
-    }
-
-    @Test
-    void stream_shouldKeepQueryOfFinalUri_whenRedirectIsSameOrigin() throws IOException {
-        final HttpStreamResponse redirect =
-                HttpStreamResponse.buffered(redirect(HttpStatus.FOUND, "https://api.example.test/next?page=2"));
-        final HttpStreamResponse ok = HttpStreamResponse.streaming(
-                HttpStatus.OK.code(), HttpHeaders.empty(), new ByteArrayInputStream(new byte[] {1}));
-        when(transport.stream(any())).thenReturn(redirect, ok);
-
-        final RedirectExecutor.StreamExchange exchange = follower().stream(
-                get("https://api.example.test/zipball"),
-                RedirectPolicy.defaults().maxHops(),
-                true);
-
-        assertThat(exchange.uri()).isEqualTo(URI.create("https://api.example.test/next?page=2"));
+        assertThat(exchange.uri()).isEqualTo(expected);
     }
 
     @Test
@@ -697,6 +616,65 @@ class RedirectExecutorTest {
                 status.code(), HttpHeaders.fromWire(Map.of(LOCATION, List.of(location))), HttpBody.absent());
     }
 
+    private RedirectExecutor.StreamExchange streamAfterRedirect(final HttpStatus status, final String location)
+            throws IOException {
+        final HttpStreamResponse redirect = HttpStreamResponse.buffered(redirect(status, location));
+        final HttpStreamResponse ok = HttpStreamResponse.streaming(
+                HttpStatus.OK.code(), HttpHeaders.empty(), new ByteArrayInputStream(new byte[] {1}));
+        when(transport.stream(any())).thenReturn(redirect, ok);
+
+        return follower().stream(
+                get("https://api.example.test/zipball"),
+                RedirectPolicy.defaults().maxHops(),
+                true);
+    }
+
+    private HttpRequest secondStreamedRequest() throws IOException {
+        final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(transport, times(2)).stream(captor.capture());
+        return captor.getAllValues().get(1);
+    }
+
+    private HttpRequest secondRequestAfterPutAcrossOrigins(
+            final HttpStatus status, final String location, final String path, final HttpHeaders requestHeaders)
+            throws IOException {
+        when(transport.execute(any())).thenReturn(redirect(status, location)).thenReturn(ok());
+        final RedirectPolicy policy =
+                new RedirectPolicy(5, Set.of(HttpMethod.GET, HttpMethod.PUT), Set.of(ACCEPT, USER_AGENT));
+        final RedirectExecutor executor = new RedirectExecutor(
+                transport, policy, HttpException::from, ParsedUrl.of(URI.create("https://api.example.test/")));
+        final HttpRequest request = new HttpRequest(
+                HttpMethod.PUT, URI.create("https://api.example.test" + path), requestHeaders, HttpBody.of(new byte[] {1
+                }));
+
+        executor.execute(request, policy.maxHops(), true);
+
+        return secondExecutedRequest();
+    }
+
+    private void assertPostRefused(final String requestUri, final String location) throws IOException {
+        when(transport.execute(any())).thenReturn(redirect(HttpStatus.TEMPORARY_REDIRECT, location));
+        final HttpRequest request =
+                new HttpRequest(HttpMethod.POST, URI.create(requestUri), headers(), HttpBody.of(new byte[] {1}));
+        final RedirectExecutor follower = follower(ParsedUrl.of(URI.create("https://host.example.test/svc/v1/")));
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
+
+        assertThat(thrown)
+                .isInstanceOf(HttpException.class)
+                .hasMessage("redirect outside the API base path not followed for POST");
+        verify(transport, times(1)).execute(any());
+    }
+
+    private Throwable catchBodyRequestFailure(final HttpMethod method, final String uri) {
+        final HttpRequest request = new HttpRequest(method, URI.create(uri), headers(), HttpBody.of(new byte[] {1}));
+        final RedirectExecutor follower = follower();
+        final int maxHops = RedirectPolicy.defaults().maxHops();
+
+        return catchThrowable(() -> follower.execute(request, maxHops, true));
+    }
+
     private HttpRequest secondExecutedRequest() throws IOException {
         final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
         verify(transport, times(2)).execute(captor.capture());
@@ -740,16 +718,7 @@ class RedirectExecutorTest {
     void execute_shouldReportSafeLocation_whenWriteMethodRedirectLocationIsOfAnyForm(final String location)
             throws IOException {
         when(transport.execute(any())).thenReturn(redirect(HttpStatus.FOUND, location));
-        final HttpRequest request = new HttpRequest(
-                HttpMethod.POST,
-                URI.create("https://api.example.test/start?code=secret"),
-                headers(),
-                HttpBody.of(new byte[] {1}));
-
-        final RedirectExecutor follower = follower();
-        final int maxHops = RedirectPolicy.defaults().maxHops();
-
-        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
+        final Throwable thrown = catchBodyRequestFailure(HttpMethod.POST, "https://api.example.test/start?code=secret");
 
         assertThat(thrown).isInstanceOf(HttpException.class);
         assertThat(thrown.getMessage()).doesNotContain("token").doesNotContain("secret");
@@ -758,14 +727,7 @@ class RedirectExecutorTest {
     @Test
     void execute_shouldNotQuoteTheRequestQuery_whenTheRequestHostIsNotAValidUriHost() throws IOException {
         when(transport.execute(any())).thenReturn(redirect(HttpStatus.SEE_OTHER, "/next?token=signed"));
-        final HttpRequest request = new HttpRequest(
-                HttpMethod.POST, URI.create("https://my_host/start?code=secret"), headers(), HttpBody.of(new byte[] {1
-                }));
-
-        final RedirectExecutor follower = follower();
-        final int maxHops = RedirectPolicy.defaults().maxHops();
-
-        final Throwable thrown = catchThrowable(() -> follower.execute(request, maxHops, true));
+        final Throwable thrown = catchBodyRequestFailure(HttpMethod.POST, "https://my_host/start?code=secret");
 
         assertThat(thrown).isInstanceOf(HttpException.class);
         assertThat(thrown.getMessage()).doesNotContain("token").doesNotContain("secret");
@@ -838,22 +800,12 @@ class RedirectExecutorTest {
 
     @Test
     void execute_shouldKeepBodyHeaders_whenWriteMethodIsRedirectedAcrossOrigins() throws IOException {
-        when(transport.execute(any()))
-                .thenReturn(redirect(HttpStatus.MOVED_PERMANENTLY, "https://other.example.test/upload"))
-                .thenReturn(ok());
-        final RedirectPolicy policy =
-                new RedirectPolicy(5, Set.of(HttpMethod.GET, HttpMethod.PUT), Set.of(ACCEPT, USER_AGENT));
-        final RedirectExecutor executor = new RedirectExecutor(
-                transport, policy, HttpException::from, ParsedUrl.of(URI.create("https://api.example.test/")));
-        final HttpRequest request = new HttpRequest(
-                HttpMethod.PUT,
-                URI.create("https://api.example.test/upload"),
-                headers().with(CONTENT_TYPE, "text/plain").with(CONTENT_ENCODING, "gzip"),
-                HttpBody.of(new byte[] {1}));
+        final HttpRequest second = secondRequestAfterPutAcrossOrigins(
+                HttpStatus.MOVED_PERMANENTLY,
+                "https://other.example.test/upload",
+                "/upload",
+                headers().with(CONTENT_TYPE, "text/plain").with(CONTENT_ENCODING, "gzip"));
 
-        executor.execute(request, 5, true);
-
-        final HttpRequest second = secondExecutedRequest();
         assertSoftly(softly -> {
             softly.assertThat(second.headers().get(CONTENT_TYPE)).contains("text/plain");
             softly.assertThat(second.headers().get(CONTENT_ENCODING)).contains("gzip");

@@ -1,4 +1,4 @@
-package pl.piotrjanczukowicz.http.transport;
+package pl.piotrjanczukowicz.test.http;
 
 import static pl.piotrjanczukowicz.util.ValidationUtils.isNonPositive;
 
@@ -10,18 +10,20 @@ import org.jspecify.annotations.Nullable;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
 import pl.piotrjanczukowicz.http.HttpStatus;
+import pl.piotrjanczukowicz.http.transport.RateLimitDetector;
+import pl.piotrjanczukowicz.http.transport.RateLimitSignal;
 
-final class RateLimitDetectors {
+public final class RateLimitDetectors {
 
-    static final String RESET_HEADER = "X-Test-Reset";
-    static final String BUCKET_HEADER = "X-Test-Bucket";
-    static final String SPENT_HEADER = "X-Test-Spent";
+    public static final String RESET_HEADER = "X-Test-Reset";
+    public static final String BUCKET_HEADER = "X-Test-Bucket";
+    public static final String SPENT_HEADER = "X-Test-Spent";
 
     private RateLimitDetectors() {
         throw new UnsupportedOperationException("Utility class");
     }
 
-    static RateLimitDetector resetHeader() {
+    public static RateLimitDetector resetHeader() {
         return (response, clock) -> {
             if (!response.hasStatus(HttpStatus.TOO_MANY_REQUESTS)) {
                 return Optional.empty();
@@ -32,7 +34,7 @@ final class RateLimitDetectors {
         };
     }
 
-    static RateLimitDetector bucketed() {
+    public static RateLimitDetector bucketed() {
         return new RateLimitDetector() {
             @Override
             public Optional<RateLimitSignal> detect(final HttpResponse response, final Clock clock) {
@@ -57,7 +59,7 @@ final class RateLimitDetectors {
         };
     }
 
-    static RateLimitDetector spentQuota() {
+    public static RateLimitDetector spentQuota() {
         final RateLimitDetector rejections = bucketed();
         return new RateLimitDetector() {
             @Override

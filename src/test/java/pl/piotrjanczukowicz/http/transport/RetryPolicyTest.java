@@ -38,11 +38,12 @@ import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
-import pl.piotrjanczukowicz.http.HttpResponses;
 import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.NonRetryableIOException;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpResponses;
+import pl.piotrjanczukowicz.test.http.RateLimitDetectors;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 import pl.piotrjanczukowicz.util.DateTimeUtils;
 
 @UnitTest

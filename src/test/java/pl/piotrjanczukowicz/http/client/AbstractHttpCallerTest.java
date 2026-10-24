@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static pl.piotrjanczukowicz.http.HttpHeaderNames.CONTENT_TYPE;
 import static pl.piotrjanczukowicz.http.HttpHeaderNames.ETAG;
-import static pl.piotrjanczukowicz.test.TestResponses.of;
+import static pl.piotrjanczukowicz.test.http.HttpResponses.response;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -38,13 +38,13 @@ import pl.piotrjanczukowicz.http.HttpResponse;
 import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.HttpStreamResponse;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
-import pl.piotrjanczukowicz.http.support.PlainJsonCodec;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
-import pl.piotrjanczukowicz.http.transport.HttpTransportMocks;
 import pl.piotrjanczukowicz.json.JsonDecodeException;
 import pl.piotrjanczukowicz.json.JsonType;
 import pl.piotrjanczukowicz.json.JsonTypes;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpTransportMocks;
+import pl.piotrjanczukowicz.test.http.PlainJsonCodec;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class AbstractHttpCallerTest {
@@ -66,7 +66,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetch_shouldDecodeBody_whenOk() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final User user = caller(client).fetch(HttpCall.of(HttpMethod.GET, "/user"), User.class);
@@ -77,7 +77,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetch_shouldDecodeBody_whenTypeHasArguments() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USERS_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USERS_JSON));
 
         try (final HttpClient client = client()) {
             final List<User> users = caller(client).fetch(HttpCall.get("/users"), USERS);
@@ -88,7 +88,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetch_shouldOmitQueryAndUserInfo_whenAbsoluteUriBodyAbsent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpCall call =
@@ -106,7 +106,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetch_shouldThrowDescriptiveFailure_whenBodyAbsent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.of(HttpMethod.DELETE, "/user/42");
@@ -125,7 +125,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetch_shouldCarryResolvedUriWithoutQuery_whenPathCallHasQuery() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.get("/user/42").withQuery(Map.of("token", "secret"));
@@ -141,7 +141,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetch_shouldThrowIllegalState_whenCodecReadsJsonNull() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), "null"));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "null"));
 
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.of(HttpMethod.GET, "/user");
@@ -156,7 +156,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOrEmpty_shouldBeEmpty_whenNotFound() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NOT_FOUND.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
 
         try (final HttpClient client = client()) {
             final Optional<User> user = caller(client).fetchOrEmpty(HttpCall.of(HttpMethod.GET, "/user"), User.class);
@@ -167,7 +167,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOrEmpty_shouldDecodeGenericType_whenFound() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), "[" + USER_JSON + "]"));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "[" + USER_JSON + "]"));
 
         try (final HttpClient client = client()) {
             final Optional<List<User>> users = caller(client).fetchOrEmpty(HttpCall.get("/users"), USERS);
@@ -180,7 +180,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOrEmpty_shouldBeEmptyForGenericType_whenNotFound() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NOT_FOUND.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
 
         try (final HttpClient client = client()) {
             assertThat(caller(client).fetchOrEmpty(HttpCall.get("/users"), USERS))
@@ -205,7 +205,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOrEmpty_shouldThrowDescriptiveFailure_whenBodyAbsentAndNotNotFound() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.ACCEPTED.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.of(HttpMethod.GET, URI.create("https://api.example.test/x"));
@@ -223,7 +223,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOrEmpty_shouldThrowEmptyResponseWithoutQuery_whenBodyAbsent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpCall call = HttpCall.of(HttpMethod.GET, URI.create("https://api.example.test/u?t=secret"));
@@ -240,7 +240,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOptional_shouldDecodeBody_whenTypeHasArguments() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USERS_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USERS_JSON));
 
         try (final HttpClient client = client()) {
             final Optional<List<User>> users = caller(client).fetchOptional(HttpCall.get("/users"), USERS);
@@ -251,7 +251,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOptional_shouldBeEmpty_whenTypeHasArgumentsAndNoContent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
             final Optional<List<User>> users = caller(client).fetchOptional(HttpCall.get("/users"), USERS);
@@ -262,7 +262,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOptional_shouldBeEmpty_whenAcceptedWithoutBody() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.ACCEPTED.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 
         try (final HttpClient client = client()) {
             final Optional<User> user = caller(client).fetchOptional(HttpCall.get("/user"), User.class);
@@ -273,7 +273,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOptional_shouldDecodeBody_whenAcceptedWithBody() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.ACCEPTED.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final Optional<User> user = caller(client).fetchOptional(HttpCall.get("/user"), User.class);
@@ -303,7 +303,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchResult_shouldBeNotModifiedWithoutValue_whenTypeHasArgumentsAnd304() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NOT_MODIFIED.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_MODIFIED.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpResult<List<User>> result = caller(client).fetchResult(HttpCall.get("/users"), USERS);
@@ -317,7 +317,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchUnless_shouldBeEmpty_whenStatusListed() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NOT_FOUND.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
 
         try (final HttpClient client = client()) {
             final Optional<User> user =
@@ -329,7 +329,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchUnless_shouldDecodeBody_whenTypeHasArgumentsAndStatusNotListed() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USERS_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USERS_JSON));
 
         try (final HttpClient client = client()) {
             final Optional<List<User>> users =
@@ -341,7 +341,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchUnless_shouldBeEmpty_whenTypeHasArgumentsAndBodyIsEmptyObject() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), "{}"));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "{}"));
 
         try (final HttpClient client = client()) {
             final Optional<List<User>> users =
@@ -353,7 +353,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchWhenReady_shouldReturnReady_whenOk() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final HttpComputed<User> computed =
@@ -366,7 +366,7 @@ class AbstractHttpCallerTest {
     @Test
     void fetchWhenReady_shouldAskAgain_whenAcceptedBeforeData() throws IOException {
         when(transport.execute(any()))
-                .thenReturn(of(HttpStatus.ACCEPTED.code(), null), of(HttpStatus.OK.code(), USER_JSON));
+                .thenReturn(response(HttpStatus.ACCEPTED.code(), null), response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final HttpComputed<User> computed =
@@ -379,7 +379,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchWhenReady_shouldReturnNotReady_whenStillAcceptedAfterLastTry() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.ACCEPTED.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpComputed<User> computed =
@@ -392,7 +392,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchWhenReady_shouldReturnNoData_whenNoContent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpComputed<User> computed =
@@ -404,7 +404,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchWhenReady_shouldReturnNoData_whenBodyIsEmptyObject() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), "{}"));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "{}"));
 
         try (final HttpClient client = client()) {
             final HttpComputed<User> computed =
@@ -417,7 +417,7 @@ class AbstractHttpCallerTest {
     @Test
     void fetchWhenReady_shouldReturnReady_whenTypeHasArgumentsAndAcceptedBeforeData() throws IOException {
         when(transport.execute(any()))
-                .thenReturn(of(HttpStatus.ACCEPTED.code(), null), of(HttpStatus.OK.code(), USERS_JSON));
+                .thenReturn(response(HttpStatus.ACCEPTED.code(), null), response(HttpStatus.OK.code(), USERS_JSON));
 
         try (final HttpClient client = client()) {
             final HttpComputed<List<User>> computed =
@@ -429,7 +429,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchWhenReady_shouldReturnNotReady_whenTypeHasArgumentsAndStillAccepted() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.ACCEPTED.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpComputed<List<User>> computed =
@@ -441,7 +441,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchByStatus_shouldUseStatusMapper_whenStatusListed() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.ACCEPTED.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final String result = caller(client)
@@ -458,7 +458,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchByStatus_shouldUseOtherwiseMapper_whenSuccessfulStatusNotListed() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final String result = caller(client)
@@ -473,7 +473,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchByStatus_shouldDecodeWithJsonType_whenMapperAsksForType() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USERS_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USERS_JSON));
 
         try (final HttpClient client = client()) {
             final int count = caller(client)
@@ -488,7 +488,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchByStatus_shouldThrowEmptyResponse_whenMapperDecodesBodyOfNoContent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         final Throwable thrown;
         try (final HttpClient client = client()) {
@@ -507,7 +507,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchByStatus_shouldThrowEmptyResponse_whenMapperDecodesJsonTypeOfNoContent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         final Throwable thrown;
         try (final HttpClient client = client()) {
@@ -523,7 +523,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchWhenReady_shouldThrowInterruptedIo_whenThreadIsInterruptedWhileWaiting() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.ACCEPTED.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.ACCEPTED.code(), null));
         final HttpAcceptedPolling slow = new HttpAcceptedPolling(3, Duration.ofSeconds(30));
 
         Thread.currentThread().interrupt();
@@ -583,7 +583,8 @@ class AbstractHttpCallerTest {
     @Test
     void download_shouldCreateNoFile_whenResponseIsNotFound() throws IOException {
         when(transport.stream(any()))
-                .thenReturn(HttpStreamResponse.buffered(of(HttpStatus.NOT_FOUND.code(), "{\"message\":\"nope\"}")));
+                .thenReturn(
+                        HttpStreamResponse.buffered(response(HttpStatus.NOT_FOUND.code(), "{\"message\":\"nope\"}")));
         final Path target = tempDir.resolve("out.bin");
 
         final Throwable thrown;
@@ -602,7 +603,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void isExisting_shouldReturnTrue_whenNoContent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
             assertThat(caller(client).isExisting(HttpCall.get("/user"))).isTrue();
@@ -611,7 +612,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void isExisting_shouldReturnFalse_whenNotFound() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NOT_FOUND.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), null));
 
         try (final HttpClient client = client()) {
             assertThat(caller(client).isExisting(HttpCall.get("/user"))).isFalse();
@@ -620,7 +621,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void json_shouldSendEncodedBodyAndContentType_whenValueGiven() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
@@ -635,7 +636,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void jsonIfPresent_shouldOmitBodyAndContentType_whenValueNull() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
@@ -666,7 +667,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchOrEmpty_shouldDecodeClassType_whenFound() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final Optional<User> user = caller(client).fetchOrEmpty(HttpCall.get("/user"), User.class);
@@ -677,7 +678,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchUnless_shouldDecodeClassType_whenStatusNotListed() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final Optional<User> user =
@@ -689,7 +690,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void jsonIfPresent_shouldEncodeBody_whenValuePresent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NO_CONTENT.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NO_CONTENT.code(), null));
 
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
@@ -726,7 +727,7 @@ class AbstractHttpCallerTest {
     @ParameterizedTest
     @ValueSource(strings = {"{", "{\"login\":\"octo\"}", "{} x"})
     void fetchUnless_shouldDecode_whenBodyIsNotAnEmptyObject(final String body) throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), body));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), body));
 
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
@@ -741,7 +742,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchUnless_shouldDecode_whenBodyIsEmptyArray() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), "[]"));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "[]"));
 
         try (final HttpClient client = client()) {
             assertThat(caller(client).fetchUnless(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND))
@@ -752,7 +753,7 @@ class AbstractHttpCallerTest {
     @Test
     void fetchUnless_shouldBeEmpty_whenBodyIsEmptyObjectWithWhitespace() throws IOException {
         final String body = " \t\r\n\u000b\f{ \n}\t ";
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), body));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), body));
 
         try (final HttpClient client = client()) {
             assertThat(caller(client).fetchUnless(HttpCall.get("/users"), USERS, HttpStatus.NOT_FOUND))
@@ -762,7 +763,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchByStatus_shouldUseStatusMapper_whenClientErrorStatusListed() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.NOT_FOUND.code(), USER_JSON));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.NOT_FOUND.code(), USER_JSON));
 
         try (final HttpClient client = client()) {
             final String result = caller(client)
@@ -775,7 +776,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchUnless_shouldBeEmpty_whenBodyAbsent() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), null));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), null));
 
         try (final HttpClient client = client()) {
             final Optional<User> user =
@@ -787,7 +788,7 @@ class AbstractHttpCallerTest {
 
     @Test
     void fetchUnless_shouldDecode_whenBodyIsBlank() throws IOException {
-        when(transport.execute(any())).thenReturn(of(HttpStatus.OK.code(), "   "));
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), "   "));
 
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);

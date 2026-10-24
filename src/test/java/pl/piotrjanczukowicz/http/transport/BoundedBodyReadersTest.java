@@ -9,7 +9,7 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import org.junit.jupiter.api.Test;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 import pl.piotrjanczukowicz.util.BoundedReadLimitException;
 import pl.piotrjanczukowicz.util.IoUtils;
 

@@ -1,8 +1,10 @@
-package pl.piotrjanczukowicz.http.transport;
+package pl.piotrjanczukowicz.test.http;
 
 import org.mockito.Answers;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
+import pl.piotrjanczukowicz.http.transport.ConcurrencyLimitingHttpTransport;
+import pl.piotrjanczukowicz.http.transport.HttpTransport;
 
 public final class HttpTransportMocks {
 
@@ -15,6 +17,6 @@ public final class HttpTransportMocks {
     }
 
     public static HttpTransport mock(final Answer<?> answer) {
-        return Mockito.mock(OkHttpTransport.class, answer);
+        return Mockito.mock(ConcurrencyLimitingHttpTransport.class, answer);
     }
 }
