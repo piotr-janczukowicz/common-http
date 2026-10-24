@@ -5,7 +5,7 @@
   <parent>
     <groupId>pl.piotrjanczukowicz</groupId>
     <artifactId>common-parent</artifactId>
-    <version>2</version>
+    <version>3</version>
     <relativePath/>
   </parent>
 
@@ -16,27 +16,12 @@
   <name>common-http</name>
   <description>Shared HTTP client and transport utilities</description>
   <url>https://github.com/piotr-janczukowicz/common-http</url>
-  <licenses>
-    <license>
-      <name>MIT License</name>
-      <url>https://opensource.org/licenses/MIT</url>
-    </license>
-  </licenses>
-
-  <scm>
-    <connection>scm:git:https://github.com/piotr-janczukowicz/common-http.git</connection>
-    <developerConnection>scm:git:https://github.com/piotr-janczukowicz/common-http.git</developerConnection>
-    <url>https://github.com/piotr-janczukowicz/common-http</url>
-  </scm>
-  <distributionManagement>
-    <repository>
-      <id>github</id>
-      <name>GitHub Packages</name>
-      <url>https://maven.pkg.github.com/piotr-janczukowicz/common-http</url>
-    </repository>
-  </distributionManagement>
 
   <properties>
+    <common-util.version>5</common-util.version>
+    <common-json.version>3</common-json.version>
+    <common-test-support.version>2</common-test-support.version>
+    <test.agent.args>-javaagent:${org.mockito:mockito-core:jar}</test.agent.args>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.http=jdk.httpserver</test.module.args>
   </properties>
 
@@ -44,13 +29,13 @@
     <dependency>
       <groupId>pl.piotrjanczukowicz</groupId>
       <artifactId>common-util</artifactId>
-      <version>4</version>
+      <version>${common-util.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>pl.piotrjanczukowicz</groupId>
       <artifactId>common-json</artifactId>
-      <version>2</version>
+      <version>${common-json.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -64,30 +49,9 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>org.jspecify</groupId>
-      <artifactId>jspecify</artifactId>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.github.spotbugs</groupId>
-      <artifactId>spotbugs-annotations</artifactId>
-      <scope>compile</scope>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
       <groupId>pl.piotrjanczukowicz</groupId>
       <artifactId>common-test-support</artifactId>
-      <version>1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.assertj</groupId>
-      <artifactId>assertj-core</artifactId>
+      <version>${common-test-support.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -157,21 +121,9 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>properties</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <groups>unit</groups>
-          <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} ${test.module.args}</argLine>
         </configuration>
       </plugin>
       <plugin>
@@ -179,7 +131,6 @@
         <artifactId>maven-failsafe-plugin</artifactId>
         <configuration>
           <groups>integration</groups>
-          <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} ${test.module.args}</argLine>
           <includes>
             <include>**/*Test.java</include>
             <include>**/*IT.java</include>

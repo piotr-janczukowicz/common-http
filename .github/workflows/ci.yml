@@ -17,6 +17,16 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+      - name: Fail if the parent or an internal dependency is outdated
+        run: |
+          mvn -B -s .github/maven-settings.xml versions:update-parent versions:update-properties             -Dincludes=pl.piotrjanczukowicz -DgenerateBackupPoms=false
+          if ! git diff --exit-code -- pom.xml; then
+            echo "::error::pom.xml uses an older common-parent or internal dependency version than the newest released one; apply the diff above"
+            exit 1
+          fi
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
       - run: mvn -B -s .github/maven-settings.xml clean verify
         env:
           GITHUB_ACTOR: ${{ github.actor }}

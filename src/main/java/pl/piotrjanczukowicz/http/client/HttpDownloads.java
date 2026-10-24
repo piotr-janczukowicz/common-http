@@ -13,12 +13,16 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
 import pl.piotrjanczukowicz.util.BoundedReadLimitException;
 import pl.piotrjanczukowicz.util.IoUtils;
 
 /** Writes a streamed body to a file without ever exposing a partial result. */
 final class HttpDownloads {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HttpDownloads.class);
 
     private static final String TEMP_PREFIX = ".download-";
     private static final String TEMP_SUFFIX = ".part";
@@ -118,6 +122,10 @@ final class HttpDownloads {
         try {
             atomicMover.move(partialFile, target);
         } catch (final AtomicMoveNotSupportedException notAtomic) {
+            LOG.atDebug()
+                    .setMessage("The file store of {} has no atomic move, replacing the target instead")
+                    .addArgument(target)
+                    .log();
             Files.move(partialFile, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
