@@ -36,8 +36,8 @@ import pl.piotrjanczukowicz.json.JsonType;
  * holds what they need, the {@link HttpClientExecutor} that sends a call and the {@link JsonCodec} that encodes request
  * bodies and decodes responses, and nothing about any one call.
  *
- * <p>JSON {@code Content-Type} is set only by {@link #json(HttpCall, Object)} and {@link #jsonIfPresent(HttpCall,
- * Object)}.
+ * <p>{@code Content-Type} is set only by {@link #json(HttpCall, Object)}, {@link #jsonIfPresent(HttpCall, Object)} and
+ * {@link #multipart(HttpCall, MultipartFormData)}.
  */
 public abstract class AbstractHttpCaller {
 

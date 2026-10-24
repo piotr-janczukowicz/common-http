@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import pl.piotrjanczukowicz.testsupport.UnitTest;
 
@@ -25,7 +27,7 @@ class MultipartFormDataTest {
 
         assertSoftly(softly -> {
             softly.assertThat(form.boundary()).isEqualTo(BOUNDARY);
-            softly.assertThat(form.contentType()).isEqualTo("multipart/form-data; boundary=xyz");
+            softly.assertThat(form.contentType()).isEqualTo("multipart/form-data; boundary=\"xyz\"");
             softly.assertThat(text(form)).isEqualTo("""
                             --xyz\r
                             Content-Disposition: form-data; name="password"\r
@@ -34,10 +36,22 @@ class MultipartFormDataTest {
                             --xyz\r
                             Content-Disposition: form-data; name="license"; filename="enterprise.ghl"\r
                             Content-Type: application/octet-stream\r
-                            \r`
+                            \r
                             LIC\r
                             --xyz--\r
                             """);
+        });
+    }
+
+    @Test
+    void contentType_shouldQuoteTheBoundary_whenItHoldsSeparators() {
+        final MultipartFormData.Builder builder = MultipartFormData.builder().text("a", "b");
+
+        final MultipartFormData form = builder.build("a=b/c:d");
+
+        assertSoftly(softly -> {
+            softly.assertThat(form.contentType()).isEqualTo("multipart/form-data; boundary=\"a=b/c:d\"");
+            softly.assertThat(text(form)).startsWith("--a=b/c:d\r\n").endsWith("--a=b/c:d--\r\n");
         });
     }
 
@@ -80,7 +94,7 @@ class MultipartFormDataTest {
 
         assertSoftly(softly -> {
             softly.assertThat(first.boundary()).isNotEqualTo(second.boundary());
-            softly.assertThat(first.contentType()).endsWith(first.boundary());
+            softly.assertThat(first.contentType()).endsWith("\"" + first.boundary() + "\"");
             softly.assertThat(text(first)).startsWith("--" + first.boundary() + "\r\n");
         });
     }
@@ -100,7 +114,7 @@ class MultipartFormDataTest {
 
         final Throwable thrown = catchThrowable(() -> builder.build(BOUNDARY));
 
-        assertThat(thrown).isInstanceOf(IllegalStateException.class);
+        assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessageContaining("at least one part");
     }
 
     @Test
@@ -113,7 +127,7 @@ class MultipartFormDataTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "has space", "semi;colon", "quote\""})
+    @MethodSource("invalidBoundaries")
     void buildWithBoundary_shouldThrow_whenBoundaryNotValid(final String boundary) {
         final MultipartFormData.Builder builder = MultipartFormData.builder().text("a", "b");
 
@@ -175,6 +189,19 @@ class MultipartFormDataTest {
         final Throwable thrown = catchThrowable(() -> builder.file("f", "f.bin", contentType, new byte[0]));
 
         assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("line break");
+    }
+
+    @Test
+    void file_shouldThrow_whenContentTypeBlank() {
+        final MultipartFormData.Builder builder = MultipartFormData.builder();
+
+        final Throwable thrown = catchThrowable(() -> builder.file("f", "f.bin", " ", new byte[0]));
+
+        assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("contentType");
+    }
+
+    private static Stream<String> invalidBoundaries() {
+        return Stream.of("", "has space", "semi;colon", "quote\"", "a".repeat(71));
     }
 
     private static String text(final MultipartFormData form) {

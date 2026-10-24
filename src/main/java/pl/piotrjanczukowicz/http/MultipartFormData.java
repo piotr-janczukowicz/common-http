@@ -3,9 +3,10 @@ package pl.piotrjanczukowicz.http;
 import static pl.piotrjanczukowicz.util.ValidationUtils.requireNonNull;
 import static pl.piotrjanczukowicz.util.ValidationUtils.requireNotBlank;
 
-import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -54,10 +55,11 @@ public final class MultipartFormData {
     /**
      * Value of the {@code Content-Type} header of the request.
      *
-     * @return {@code multipart/form-data} with the boundary parameter
+     * @return {@code multipart/form-data} with the boundary parameter as a quoted string, because the boundary may hold
+     *     characters that are not allowed in a bare parameter value
      */
     public String contentType() {
-        return "multipart/form-data; boundary=" + boundary;
+        return "multipart/form-data; boundary=\"" + boundary + "\"";
     }
 
     /**
@@ -67,11 +69,6 @@ public final class MultipartFormData {
      */
     public HttpBody body() {
         return body;
-    }
-
-    private static void write(final ByteArrayOutputStream out, final String text) {
-        final byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-        out.write(bytes, 0, bytes.length);
     }
 
     /** Collects the parts of a {@link MultipartFormData}. */
@@ -165,17 +162,26 @@ public final class MultipartFormData {
         }
 
         private boolean isInAnyPart(final String boundary) {
-            final String marker = DELIMITER + boundary;
+            final byte[] marker = (DELIMITER + boundary).getBytes(StandardCharsets.ISO_8859_1);
             return parts.stream().anyMatch(part -> part.contains(marker));
         }
 
         private MultipartFormData encode(final String boundary) {
-            final ByteArrayOutputStream out = new ByteArrayOutputStream();
+            final byte[] closing = (DELIMITER + boundary + DELIMITER + CRLF).getBytes(StandardCharsets.UTF_8);
+            final byte[] lineBreak = CRLF.getBytes(StandardCharsets.UTF_8);
+            final List<byte[]> heads = new ArrayList<>(parts.size());
+            int size = closing.length;
             for (final Part part : parts) {
-                part.writeTo(out, boundary);
+                final byte[] head = part.head(boundary);
+                heads.add(head);
+                size += head.length + part.content().length + lineBreak.length;
             }
-            write(out, DELIMITER + boundary + DELIMITER + CRLF);
-            return new MultipartFormData(boundary, HttpBody.of(out.toByteArray()));
+            final ByteBuffer entity = ByteBuffer.allocate(size);
+            for (int i = 0; i < parts.size(); i++) {
+                entity.put(heads.get(i)).put(parts.get(i).content()).put(lineBreak);
+            }
+            entity.put(closing);
+            return new MultipartFormData(boundary, HttpBody.of(entity.array()));
         }
     }
 
@@ -187,14 +193,19 @@ public final class MultipartFormData {
             @Nullable String contentType,
             byte[] content) {
 
-        boolean contains(final String marker) {
-            return new String(content, StandardCharsets.ISO_8859_1).contains(marker);
+        boolean contains(final byte[] marker) {
+            final int last = content.length - marker.length;
+            for (int start = 0; start <= last; start++) {
+                if (content[start] == marker[0]
+                        && Arrays.equals(content, start, start + marker.length, marker, 0, marker.length)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
-        void writeTo(final ByteArrayOutputStream out, final String boundary) {
-            write(out, DELIMITER + boundary + CRLF + headers() + CRLF);
-            out.write(content, 0, content.length);
-            write(out, CRLF);
+        byte[] head(final String boundary) {
+            return (DELIMITER + boundary + CRLF + headers() + CRLF).getBytes(StandardCharsets.UTF_8);
         }
 
         private String headers() {

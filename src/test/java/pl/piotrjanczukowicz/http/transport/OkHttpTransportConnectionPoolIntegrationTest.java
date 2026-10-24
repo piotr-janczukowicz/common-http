@@ -66,7 +66,7 @@ class OkHttpTransportConnectionPoolIntegrationTest {
     }
 
     @Test
-    void create_shouldOpenMoreConnections_whenPoolKeepsOnlyOneIdleConnection() throws Exception {
+    void create_shouldOpenMoreConnectionsThanCallers_whenPoolKeepsOnlyOneIdleConnection() throws Exception {
         final HttpTransportConfiguration tight =
                 HttpTransportConfiguration.builder().maxIdleConnections(1).build();
 

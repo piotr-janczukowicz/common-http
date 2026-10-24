@@ -647,9 +647,11 @@ class AbstractHttpCallerTest {
         }
 
         final HttpRequest request = capturedRequest();
-        assertThat(request.headers().get(CONTENT_TYPE)).contains("multipart/form-data; boundary=xyz");
-        assertThat(request.body().mapBytes(bytes -> new String(bytes, StandardCharsets.UTF_8), () -> ""))
-                .contains("name=\"password\"");
+        assertSoftly(softly -> {
+            softly.assertThat(request.headers().get(CONTENT_TYPE)).contains("multipart/form-data; boundary=\"xyz\"");
+            softly.assertThat(request.body().mapBytes(bytes -> new String(bytes, StandardCharsets.UTF_8), () -> ""))
+                    .contains("name=\"password\"");
+        });
     }
 
     @Test
