@@ -30,6 +30,8 @@ import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
@@ -78,6 +80,8 @@ import pl.piotrjanczukowicz.http.uri.ParsedUrl;
  * class itself does nothing until a stack includes it.
  */
 public final class ConditionalCachingHttpTransport implements HttpTransport {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ConditionalCachingHttpTransport.class);
 
     private static final String NO_STORE = "no-store";
     private static final String VARY_ANY = "*";
@@ -146,6 +150,10 @@ public final class ConditionalCachingHttpTransport implements HttpTransport {
         if (!response.hasStatus(HttpStatus.NOT_MODIFIED)) {
             return replace(key, request, response);
         }
+        LOG.atDebug()
+                .setMessage("{}: 304 Not Modified, serving the kept copy")
+                .addArgument(request.url()::describeSafe)
+                .log();
         return replace(key, request, revalidated(kept.get().response(), response));
     }
 
@@ -225,6 +233,10 @@ public final class ConditionalCachingHttpTransport implements HttpTransport {
             final Entry dropped = entries.remove(key);
             if (dropped != null) {
                 keptBytes -= dropped.bytes();
+                LOG.atDebug()
+                        .setMessage("Dropped the kept copy of {}: the server no longer stands behind it")
+                        .addArgument(key.url()::describeSafe)
+                        .log();
             }
         } finally {
             lock.unlock();
@@ -259,6 +271,11 @@ public final class ConditionalCachingHttpTransport implements HttpTransport {
         while (entries.size() > maxEntries || keptBytes > maxTotalBytes) {
             keptBytes -= oldestFirst.next().bytes();
             oldestFirst.remove();
+            LOG.atDebug()
+                    .setMessage("Evicted the oldest kept copy: {} entries, {} bytes kept")
+                    .addArgument(entries::size)
+                    .addArgument(keptBytes)
+                    .log();
         }
     }
 

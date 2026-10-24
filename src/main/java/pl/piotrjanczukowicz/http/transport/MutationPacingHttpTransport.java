@@ -15,6 +15,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
@@ -50,6 +52,8 @@ public final class MutationPacingHttpTransport implements HttpTransport {
     /** Methods paced by default: POST, PATCH, PUT and DELETE. */
     public static final Set<HttpMethod> DEFAULT_MUTATION_METHODS =
             Set.of(HttpMethod.POST, HttpMethod.PATCH, HttpMethod.PUT, HttpMethod.DELETE);
+
+    private static final Logger LOG = LoggerFactory.getLogger(MutationPacingHttpTransport.class);
 
     private static final String DELEGATE_ARGUMENT = "delegate";
     private static final String METHODS_ARGUMENT = "methods";
@@ -154,6 +158,10 @@ public final class MutationPacingHttpTransport implements HttpTransport {
             throwIfClosed();
             final Duration wait = waitBeforeStart();
             if (!wait.isZero()) {
+                LOG.atDebug()
+                        .setMessage("Pacing a mutation: waiting {} ms before it starts")
+                        .addArgument(wait::toMillis)
+                        .log();
                 sleeper.sleep(wait);
                 throwIfClosed();
             }

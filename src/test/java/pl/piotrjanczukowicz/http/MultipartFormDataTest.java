@@ -26,17 +26,18 @@ class MultipartFormDataTest {
         assertSoftly(softly -> {
             softly.assertThat(form.boundary()).isEqualTo(BOUNDARY);
             softly.assertThat(form.contentType()).isEqualTo("multipart/form-data; boundary=xyz");
-            softly.assertThat(text(form))
-                    .isEqualTo("--xyz\r\n"
-                            + "Content-Disposition: form-data; name=\"password\"\r\n"
-                            + "\r\n"
-                            + "p4ss\r\n"
-                            + "--xyz\r\n"
-                            + "Content-Disposition: form-data; name=\"license\"; filename=\"enterprise.ghl\"\r\n"
-                            + "Content-Type: application/octet-stream\r\n"
-                            + "\r\n"
-                            + "LIC\r\n"
-                            + "--xyz--\r\n");
+            softly.assertThat(text(form)).isEqualTo("""
+                            --xyz\r
+                            Content-Disposition: form-data; name="password"\r
+                            \r
+                            p4ss\r
+                            --xyz\r
+                            Content-Disposition: form-data; name="license"; filename="enterprise.ghl"\r
+                            Content-Type: application/octet-stream\r
+                            \r`
+                            LIC\r
+                            --xyz--\r
+                            """);
         });
     }
 

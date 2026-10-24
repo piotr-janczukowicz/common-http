@@ -653,7 +653,7 @@ class AbstractHttpCallerTest {
     }
 
     @Test
-    void multipart_shouldThrow_whenFormNull() throws IOException {
+    void multipart_shouldThrow_whenFormNull() {
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
             final HttpCall call = HttpCall.of(HttpMethod.POST, "/init");

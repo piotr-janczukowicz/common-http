@@ -23,7 +23,7 @@ public final class MultipartFormData {
     private static final String CRLF = "\r\n";
     private static final String DELIMITER = "--";
     private static final String NAME = "name";
-    private static final Pattern BOUNDARY = Pattern.compile("[0-9A-Za-z'()+_,./:=?-]{1,70}");
+    private static final Pattern BOUNDARY_PATTERN = Pattern.compile("[0-9A-Za-z'()+_,./:=?-]{1,70}");
 
     private final String boundary;
     private final HttpBody body;
@@ -144,7 +144,7 @@ public final class MultipartFormData {
          */
         public MultipartFormData build(final String boundary) {
             requireNonNull(boundary, "boundary");
-            if (!BOUNDARY.matcher(boundary).matches()) {
+            if (!BOUNDARY_PATTERN.matcher(boundary).matches()) {
                 throw new IllegalArgumentException("boundary must be 1 to 70 characters of [0-9A-Za-z'()+_,-./:=?]");
             }
             requireParts();
@@ -179,6 +179,8 @@ public final class MultipartFormData {
         }
     }
 
+    // Parts are only written out, never compared or printed, so value semantics of the array would be dead code.
+    @SuppressWarnings("java:S6218")
     private record Part(
             String name,
             @Nullable String filename,
