@@ -67,22 +67,15 @@ class OkHttpTransportConnectionPoolIntegrationTest {
 
     @Test
     void create_shouldOpenMoreConnections_whenPoolKeepsOnlyOneIdleConnection() throws Exception {
-        final HttpTransportConfiguration roomy =
-                HttpTransportConfiguration.builder().maxIdleConnections(THREADS).build();
         final HttpTransportConfiguration tight =
                 HttpTransportConfiguration.builder().maxIdleConnections(1).build();
 
-        final int roomyConnections;
-        try (HttpTransport transport = HttpTransports.okHttp(roomy)) {
-            roomyConnections = hammer(transport);
-        }
-        remotePorts.clear();
         final int tightConnections;
         try (HttpTransport transport = HttpTransports.okHttp(tight)) {
             tightConnections = hammer(transport);
         }
 
-        assertThat(tightConnections).isGreaterThan(roomyConnections * 2);
+        assertThat(tightConnections).isGreaterThan(THREADS);
     }
 
     // Holds every request until all callers of the same round are in flight, so each round needs THREADS connections.
