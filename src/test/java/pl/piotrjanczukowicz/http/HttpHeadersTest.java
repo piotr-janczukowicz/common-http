@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class HttpHeadersTest {

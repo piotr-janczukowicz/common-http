@@ -8,7 +8,7 @@ import java.lang.reflect.Constructor;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 import org.junit.jupiter.api.Test;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class DigestsTest {

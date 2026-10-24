@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class HttpBodyTest {

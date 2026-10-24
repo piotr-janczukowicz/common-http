@@ -1,17 +1,14 @@
-package pl.piotrjanczukowicz.http.support;
+package pl.piotrjanczukowicz.test.http;
 
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
+import pl.piotrjanczukowicz.testsupport.LoopbackHttpServer;
 
 public final class ScriptedHttpServer implements AutoCloseable {
 
@@ -21,16 +18,13 @@ public final class ScriptedHttpServer implements AutoCloseable {
         void run(int call, HttpExchange exchange) throws Exception;
     }
 
-    private final HttpServer server;
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final LoopbackHttpServer server;
     private final AtomicInteger calls = new AtomicInteger();
     private final AtomicInteger disconnects = new AtomicInteger();
     private final AtomicReference<Throwable> scriptFailure = new AtomicReference<>();
 
     public ScriptedHttpServer(final Script script) throws IOException {
-        this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        this.server.setExecutor(executor);
-        this.server.createContext("/", exchange -> {
+        this.server = LoopbackHttpServer.start("/", exchange -> {
             final int call = calls.incrementAndGet();
             try (exchange) {
                 script.run(call, exchange);
@@ -42,11 +36,10 @@ public final class ScriptedHttpServer implements AutoCloseable {
                 scriptFailure.compareAndSet(null, failure);
             }
         });
-        this.server.start();
     }
 
     public URI uri() {
-        return URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/");
+        return server.uri();
     }
 
     public HttpRequest request() {
@@ -68,8 +61,7 @@ public final class ScriptedHttpServer implements AutoCloseable {
      */
     @Override
     public void close() {
-        server.stop(0);
-        executor.shutdownNow();
+        server.close();
         final Throwable failure = scriptFailure.get();
         if (failure instanceof final AssertionError assertion) {
             throw assertion;

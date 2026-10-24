@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import java.lang.reflect.Constructor;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class HttpTransportsTest {

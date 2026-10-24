@@ -18,10 +18,10 @@ import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
 import pl.piotrjanczukowicz.http.HttpStatus;
-import pl.piotrjanczukowicz.http.support.PlainJsonCodec;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
-import pl.piotrjanczukowicz.http.transport.HttpTransportMocks;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpTransportMocks;
+import pl.piotrjanczukowicz.test.http.PlainJsonCodec;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 import pl.piotrjanczukowicz.uri.PathTemplate;
 
 @UnitTest

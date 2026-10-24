@@ -32,7 +32,7 @@ import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
 import pl.piotrjanczukowicz.http.NonRetryableIOException;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class OkHttpTransportTest {

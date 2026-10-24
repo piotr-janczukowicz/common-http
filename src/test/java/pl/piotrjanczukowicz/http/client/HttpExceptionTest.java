@@ -19,7 +19,7 @@ import pl.piotrjanczukowicz.http.HttpErrorBodies;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpResponse;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class HttpExceptionTest {

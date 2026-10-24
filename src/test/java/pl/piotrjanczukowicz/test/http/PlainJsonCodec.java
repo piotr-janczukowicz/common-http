@@ -1,4 +1,4 @@
-package pl.piotrjanczukowicz.http.support;
+package pl.piotrjanczukowicz.test.http;
 
 import pl.piotrjanczukowicz.json.JsonCodec;
 import pl.piotrjanczukowicz.json.JsonDecodeException;

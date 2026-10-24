@@ -4,14 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static pl.piotrjanczukowicz.http.HttpMethod.GET;
 import static pl.piotrjanczukowicz.http.HttpStatus.OK;
-import static pl.piotrjanczukowicz.http.support.StubHttpServer.status;
+import static pl.piotrjanczukowicz.test.http.StubHttpServer.status;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
@@ -39,8 +38,9 @@ import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
-import pl.piotrjanczukowicz.http.support.StubHttpServer;
-import pl.piotrjanczukowicz.test.IntegrationTest;
+import pl.piotrjanczukowicz.test.http.StubHttpServer;
+import pl.piotrjanczukowicz.testsupport.IntegrationTest;
+import pl.piotrjanczukowicz.testsupport.LoopbackPorts;
 
 @IntegrationTest
 class OkHttpTransportNetworkIntegrationTest {
@@ -239,10 +239,7 @@ class OkHttpTransportNetworkIntegrationTest {
 
     @Test
     void execute_shouldFailToConnect_whenSocksProxyIsUnreachable() throws Exception {
-        final int closedPort;
-        try (ServerSocket socket = new ServerSocket(0)) {
-            closedPort = socket.getLocalPort();
-        }
+        final int closedPort = LoopbackPorts.closedPort();
         final HttpTransportConfiguration configuration = configuration(HttpNetworkConfiguration.builder()
                 .proxy(HttpProxy.socks("127.0.0.1", closedPort))
                 .build());

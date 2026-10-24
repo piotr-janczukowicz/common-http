@@ -4,7 +4,7 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.io.IOException;
 import org.junit.jupiter.api.Test;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 
 @UnitTest
 class NonRetryableIOExceptionTest {

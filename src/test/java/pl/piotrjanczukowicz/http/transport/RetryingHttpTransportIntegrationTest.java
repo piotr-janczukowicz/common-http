@@ -6,8 +6,8 @@ import static pl.piotrjanczukowicz.http.HttpHeaderNames.RETRY_AFTER;
 import static pl.piotrjanczukowicz.http.HttpMethod.GET;
 import static pl.piotrjanczukowicz.http.HttpMethod.POST;
 import static pl.piotrjanczukowicz.http.HttpStatus.*;
-import static pl.piotrjanczukowicz.http.support.StubHttpServer.connectionReset;
-import static pl.piotrjanczukowicz.http.support.StubHttpServer.status;
+import static pl.piotrjanczukowicz.test.http.StubHttpServer.connectionReset;
+import static pl.piotrjanczukowicz.test.http.StubHttpServer.status;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -18,8 +18,9 @@ import pl.piotrjanczukowicz.http.HttpBody;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
-import pl.piotrjanczukowicz.http.support.StubHttpServer;
-import pl.piotrjanczukowicz.test.IntegrationTest;
+import pl.piotrjanczukowicz.test.http.RateLimitDetectors;
+import pl.piotrjanczukowicz.test.http.StubHttpServer;
+import pl.piotrjanczukowicz.testsupport.IntegrationTest;
 
 @IntegrationTest
 class RetryingHttpTransportIntegrationTest {

@@ -7,7 +7,7 @@ import static pl.piotrjanczukowicz.http.HttpMethod.GET;
 import static pl.piotrjanczukowicz.http.HttpStatus.FOUND;
 import static pl.piotrjanczukowicz.http.HttpStatus.NOT_FOUND;
 import static pl.piotrjanczukowicz.http.HttpStatus.OK;
-import static pl.piotrjanczukowicz.http.support.StubHttpServer.status;
+import static pl.piotrjanczukowicz.test.http.StubHttpServer.status;
 
 import java.io.ByteArrayInputStream;
 import java.net.URI;
@@ -20,13 +20,13 @@ import pl.piotrjanczukowicz.http.HttpBody;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.NonRetryableIOException;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
-import pl.piotrjanczukowicz.http.support.StubHttpServer;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
 import pl.piotrjanczukowicz.http.transport.HttpTransportConfiguration;
 import pl.piotrjanczukowicz.http.transport.HttpTransports;
 import pl.piotrjanczukowicz.http.transport.RetryConfiguration;
 import pl.piotrjanczukowicz.http.transport.RetryingHttpTransport;
-import pl.piotrjanczukowicz.test.IntegrationTest;
+import pl.piotrjanczukowicz.test.http.StubHttpServer;
+import pl.piotrjanczukowicz.testsupport.IntegrationTest;
 
 @IntegrationTest
 class HttpClientTransportIntegrationTest {

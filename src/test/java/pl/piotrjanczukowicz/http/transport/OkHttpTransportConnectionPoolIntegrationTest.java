@@ -2,11 +2,7 @@ package pl.piotrjanczukowicz.http.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -25,7 +21,8 @@ import org.junit.jupiter.api.Test;
 import pl.piotrjanczukowicz.http.HttpHeaders;
 import pl.piotrjanczukowicz.http.HttpMethod;
 import pl.piotrjanczukowicz.http.HttpRequest;
-import pl.piotrjanczukowicz.test.IntegrationTest;
+import pl.piotrjanczukowicz.testsupport.IntegrationTest;
+import pl.piotrjanczukowicz.testsupport.LoopbackHttpServer;
 
 @IntegrationTest
 class OkHttpTransportConnectionPoolIntegrationTest {
@@ -36,34 +33,23 @@ class OkHttpTransportConnectionPoolIntegrationTest {
 
     private final Set<Integer> remotePorts = ConcurrentHashMap.newKeySet();
     private final CyclicBarrier round = new CyclicBarrier(THREADS);
-    private HttpServer server;
-    private ExecutorService serverExecutor;
+    private LoopbackHttpServer server;
     private HttpRequest request;
 
     @BeforeEach
     void startServer() throws IOException {
-        server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
-        serverExecutor = Executors.newFixedThreadPool(THREADS * 2);
-        server.setExecutor(serverExecutor);
-        server.createContext("/ping", exchange -> {
+        server = LoopbackHttpServer.start("/ping", exchange -> {
             remotePorts.add(exchange.getRemoteAddress().getPort());
             awaitOtherCallers();
             exchange.sendResponseHeaders(204, -1);
             exchange.close();
         });
-        server.start();
-        request = new HttpRequest(
-                HttpMethod.GET,
-                URI.create("http://" + InetAddress.getLoopbackAddress().getHostAddress() + ":"
-                        + server.getAddress().getPort() + "/ping"),
-                HttpHeaders.empty(),
-                null);
+        request = new HttpRequest(HttpMethod.GET, server.uri(), HttpHeaders.empty(), null);
     }
 
     @AfterEach
     void stopServer() {
-        server.stop(0);
-        serverExecutor.shutdownNow();
+        server.close();
     }
 
     @Test

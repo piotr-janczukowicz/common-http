@@ -7,6 +7,7 @@ import static pl.piotrjanczukowicz.http.HttpHeaderNames.CONTENT_TYPE;
 import static pl.piotrjanczukowicz.http.HttpHeaderNames.DATE;
 import static pl.piotrjanczukowicz.http.HttpHeaderNames.RETRY_AFTER;
 import static pl.piotrjanczukowicz.http.HttpHeaderNames.SET_COOKIE;
+import static pl.piotrjanczukowicz.test.http.HttpResponses.response;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -17,7 +18,6 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,7 +27,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import pl.piotrjanczukowicz.test.UnitTest;
+import pl.piotrjanczukowicz.test.http.HttpResponses;
+import pl.piotrjanczukowicz.testsupport.UnitTest;
 import pl.piotrjanczukowicz.util.DateTimeUtils;
 
 @UnitTest
@@ -150,8 +151,8 @@ class HttpResponseTest {
 
     @Test
     void retryAfter_shouldReturnSeconds_whenHeaderIsInteger() {
-        final HttpResponse positive = response(RETRY_AFTER, "45");
-        final HttpResponse negative = response(RETRY_AFTER, "-5");
+        final HttpResponse positive = response(HttpStatus.TOO_MANY_REQUESTS.code(), null, RETRY_AFTER, "45");
+        final HttpResponse negative = response(HttpStatus.TOO_MANY_REQUESTS.code(), null, RETRY_AFTER, "-5");
 
         final Optional<Duration> delay = positive.retryAfter(CLOCK);
         final Optional<Duration> negativeDelay = negative.retryAfter(CLOCK);
@@ -166,7 +167,7 @@ class HttpResponseTest {
     void retryAfter_shouldReturnUntilDate_whenHeaderIsRfc1123() {
         final String value = DateTimeFormatter.RFC_1123_DATE_TIME.format(
                 CLOCK.instant().plusSeconds(5).atOffset(ZoneOffset.UTC));
-        final HttpResponse response = response(RETRY_AFTER, value);
+        final HttpResponse response = response(HttpStatus.TOO_MANY_REQUESTS.code(), null, RETRY_AFTER, value);
 
         final Optional<Duration> delay = response.retryAfter(CLOCK);
 
@@ -178,6 +179,8 @@ class HttpResponseTest {
         final Instant serverNow = Instant.parse("2026-01-01T00:00:00Z");
         final Clock behind = Clock.fixed(serverNow.plusSeconds(120), ZoneOffset.UTC);
         final HttpResponse response = response(
+                HttpStatus.TOO_MANY_REQUESTS.code(),
+                null,
                 DATE,
                 DateTimeUtils.toRfc1123(serverNow),
                 RETRY_AFTER,
@@ -190,8 +193,11 @@ class HttpResponseTest {
 
     @Test
     void retryAfter_shouldMeasureAgainstClock_whenResponseHasNoDate() {
-        final HttpResponse response =
-                response(RETRY_AFTER, DateTimeUtils.toRfc1123(CLOCK.instant().plusSeconds(30)));
+        final HttpResponse response = response(
+                HttpStatus.TOO_MANY_REQUESTS.code(),
+                null,
+                RETRY_AFTER,
+                DateTimeUtils.toRfc1123(CLOCK.instant().plusSeconds(30)));
 
         final Optional<Duration> delay = response.retryAfter(CLOCK);
 
@@ -201,6 +207,8 @@ class HttpResponseTest {
     @Test
     void retryAfter_shouldMeasureAgainstClock_whenDateHeaderIsGarbage() {
         final HttpResponse response = response(
+                HttpStatus.TOO_MANY_REQUESTS.code(),
+                null,
                 DATE,
                 "yesterday",
                 RETRY_AFTER,
@@ -214,7 +222,7 @@ class HttpResponseTest {
     @ParameterizedTest
     @ValueSource(strings = {"soon", "1.5"})
     void retryAfter_shouldBeEmpty_whenHeaderIsNeitherSecondsNorDate(final String value) {
-        final HttpResponse response = response(RETRY_AFTER, value);
+        final HttpResponse response = response(HttpStatus.TOO_MANY_REQUESTS.code(), null, RETRY_AFTER, value);
 
         final Optional<Duration> delay = response.retryAfter(CLOCK);
 
@@ -223,7 +231,8 @@ class HttpResponseTest {
 
     @Test
     void retryAfter_shouldBeEmpty_whenHeaderAbsent() {
-        final HttpResponse response = response(DATE, DateTimeUtils.toRfc1123(CLOCK.instant()));
+        final HttpResponse response =
+                response(HttpStatus.TOO_MANY_REQUESTS.code(), null, DATE, DateTimeUtils.toRfc1123(CLOCK.instant()));
 
         final Optional<Duration> delay = response.retryAfter(CLOCK);
 
@@ -232,19 +241,11 @@ class HttpResponseTest {
 
     @Test
     void retryAfter_shouldThrow_whenClockNull() {
-        final HttpResponse response = response(RETRY_AFTER, "1");
+        final HttpResponse response = response(HttpStatus.TOO_MANY_REQUESTS.code(), null, RETRY_AFTER, "1");
 
         final Throwable thrown = catchThrowable(() -> response.retryAfter(null));
 
         assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("clock");
-    }
-
-    private static HttpResponse response(final String... namesAndValues) {
-        final Map<String, List<String>> headers = new LinkedHashMap<>();
-        for (int i = 0; i < namesAndValues.length; i += 2) {
-            headers.put(namesAndValues[i], List.of(namesAndValues[i + 1]));
-        }
-        return HttpResponses.of(HttpStatus.TOO_MANY_REQUESTS.code(), headers, null);
     }
 
     @Test
