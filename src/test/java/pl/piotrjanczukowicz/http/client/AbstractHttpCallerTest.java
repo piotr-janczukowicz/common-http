@@ -37,6 +37,7 @@ import pl.piotrjanczukowicz.http.HttpRequest;
 import pl.piotrjanczukowicz.http.HttpResponse;
 import pl.piotrjanczukowicz.http.HttpStatus;
 import pl.piotrjanczukowicz.http.HttpStreamResponse;
+import pl.piotrjanczukowicz.http.MultipartFormData;
 import pl.piotrjanczukowicz.http.ResponseTooLargeException;
 import pl.piotrjanczukowicz.http.transport.HttpTransport;
 import pl.piotrjanczukowicz.json.JsonDecodeException;
@@ -632,6 +633,35 @@ class AbstractHttpCallerTest {
         assertThat(request.headers().get(CONTENT_TYPE)).contains("application/json");
         assertThat(request.body().mapBytes(bytes -> new String(bytes, StandardCharsets.UTF_8), () -> ""))
                 .contains("octo");
+    }
+
+    @Test
+    void multipart_shouldSendTheFormAndItsContentType_whenFormGiven() throws IOException {
+        when(transport.execute(any())).thenReturn(response(HttpStatus.OK.code(), USER_JSON));
+        final MultipartFormData form =
+                MultipartFormData.builder().text("password", "p4ss").build("xyz");
+
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            caller.send(caller.multipart(HttpCall.of(HttpMethod.POST, "/init"), form));
+        }
+
+        final HttpRequest request = capturedRequest();
+        assertThat(request.headers().get(CONTENT_TYPE)).contains("multipart/form-data; boundary=xyz");
+        assertThat(request.body().mapBytes(bytes -> new String(bytes, StandardCharsets.UTF_8), () -> ""))
+                .contains("name=\"password\"");
+    }
+
+    @Test
+    void multipart_shouldThrow_whenFormNull() throws IOException {
+        try (final HttpClient client = client()) {
+            final HttpClientCaller caller = caller(client);
+            final HttpCall call = HttpCall.of(HttpMethod.POST, "/init");
+
+            final Throwable thrown = catchThrowable(() -> caller.multipart(call, null));
+
+            assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessageContaining("form");
+        }
     }
 
     @Test

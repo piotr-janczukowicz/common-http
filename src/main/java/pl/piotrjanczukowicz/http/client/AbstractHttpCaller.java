@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import pl.piotrjanczukowicz.http.HttpBody;
 import pl.piotrjanczukowicz.http.HttpResponse;
 import pl.piotrjanczukowicz.http.HttpStatus;
+import pl.piotrjanczukowicz.http.MultipartFormData;
 import pl.piotrjanczukowicz.http.client.HttpCall.AbsoluteUri;
 import pl.piotrjanczukowicz.http.uri.HttpUris;
 import pl.piotrjanczukowicz.http.uri.ParsedUrl;
@@ -76,6 +77,21 @@ public abstract class AbstractHttpCaller {
         requireNonNull(call, CALL);
         requireNonNull(value, "value");
         return call.withBody(HttpBody.of(jsonCodec.encode(value))).withHeader(CONTENT_TYPE, JSON_CONTENT_TYPE);
+    }
+
+    /**
+     * {@code call} with {@code form} as its body and the {@code multipart/form-data} {@code Content-Type} that names
+     * its boundary.
+     *
+     * @param call call to extend
+     * @param form multipart entity
+     * @return new call
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public HttpCall multipart(final HttpCall call, final MultipartFormData form) {
+        requireNonNull(call, CALL);
+        requireNonNull(form, "form");
+        return call.withBody(form.body()).withHeader(CONTENT_TYPE, form.contentType());
     }
 
     /**
