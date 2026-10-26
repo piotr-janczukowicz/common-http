@@ -19,7 +19,7 @@
 
   <properties>
     <common-util.version>6</common-util.version>
-    <common-json.version>4-SNAPSHOT</common-json.version>
+    <common-json.version>4</common-json.version>
     <common-test-support.version>3-SNAPSHOT</common-test-support.version>
     <test.agent.args>-javaagent:${org.mockito:mockito-core:jar}</test.agent.args>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.http=jdk.httpserver</test.module.args>
