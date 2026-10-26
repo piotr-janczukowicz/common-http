@@ -5,7 +5,7 @@
   <parent>
     <groupId>io.github.piotr-janczukowicz</groupId>
     <artifactId>common-parent</artifactId>
-    <version>5-SNAPSHOT</version>
+    <version>5</version>
     <relativePath/>
   </parent>
 
@@ -18,7 +18,7 @@
   <url>https://github.com/piotr-janczukowicz/common-http</url>
 
   <properties>
-    <common-util.version>6-SNAPSHOT</common-util.version>
+    <common-util.version>6</common-util.version>
     <common-json.version>4-SNAPSHOT</common-json.version>
     <common-test-support.version>3-SNAPSHOT</common-test-support.version>
     <test.agent.args>-javaagent:${org.mockito:mockito-core:jar}</test.agent.args>
