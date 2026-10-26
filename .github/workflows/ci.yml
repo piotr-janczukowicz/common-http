@@ -84,7 +84,7 @@ jobs:
       - name: Show the imported signing key
         run: gpg --list-secret-keys --keyid-format long
       - name: Publish to Maven Central
-        run: mvn -B deploy -Pcentral -Prelease -Dgpg.keyname=E1A4492D376821D0680C6C758D93BEA6026504E0
+        run: mvn -B -s .github/maven-settings.xml deploy -Pcentral -Prelease -Dgpg.keyname=E1A4492D376821D0680C6C758D93BEA6026504E0
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
