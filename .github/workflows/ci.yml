@@ -3,8 +3,7 @@ name: CI
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   verify:
@@ -19,7 +18,7 @@ jobs:
           cache: maven
       - name: Fail if the parent or an internal dependency is outdated
         run: |
-          mvn -B -s .github/maven-settings.xml versions:update-parent versions:update-properties             -Dincludes=pl.piotrjanczukowicz -DgenerateBackupPoms=false
+          mvn -B -s .github/maven-settings.xml versions:update-parent versions:update-properties             -Dincludes=io.github.piotr-janczukowicz -DgenerateBackupPoms=false
           if ! git diff --exit-code -- pom.xml; then
             echo "::error::pom.xml uses an older common-parent or internal dependency version than the newest released one; apply the diff above"
             exit 1
@@ -33,7 +32,7 @@ jobs:
           PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
   release:
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
       group: release
@@ -53,10 +52,6 @@ jobs:
           java-version: "21"
           cache: maven
           server-id: github
-      - name: Resolve common-parent
-        run: mvn -B -s .github/maven-settings.xml dependency:get -Dartifact=pl.piotrjanczukowicz:common-parent:1:pom
-      - name: Resolve common-build-config
-        run: mvn -B -s .github/maven-settings.xml dependency:get -Dartifact=pl.piotrjanczukowicz:common-build-config:1
       - name: Resolve release version
         id: version
         run: |
@@ -74,10 +69,28 @@ jobs:
             echo "::error::Tag v${{ steps.version.outputs.release }} already exists"
             exit 1
           fi
-      - name: Deploy release
+      - name: Set release version
         run: |
           mvn -B -s .github/maven-settings.xml versions:set -DnewVersion=${{ steps.version.outputs.release }} -DgenerateBackupPoms=false
-          mvn -B -s .github/maven-settings.xml deploy -DdeployAtEnd=false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - name: Show the imported signing key
+        run: gpg --list-secret-keys --keyid-format long
+      - name: Publish to Maven Central
+        run: mvn -B deploy -Pcentral -Prelease -Dgpg.keyname=E1A4492D376821D0680C6C758D93BEA6026504E0
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Deploy to GitHub Packages
+        run: mvn -B -s .github/maven-settings.xml deploy -DdeployAtEnd=false -Prelease
       - name: Tag and create GitHub release
         run: gh release create "v${{ steps.version.outputs.release }}" --target "$GITHUB_SHA" --generate-notes
         env:

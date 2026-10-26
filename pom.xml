@@ -3,9 +3,9 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>pl.piotrjanczukowicz</groupId>
+    <groupId>io.github.piotr-janczukowicz</groupId>
     <artifactId>common-parent</artifactId>
-    <version>3</version>
+    <version>5-SNAPSHOT</version>
     <relativePath/>
   </parent>
 
@@ -18,22 +18,22 @@
   <url>https://github.com/piotr-janczukowicz/common-http</url>
 
   <properties>
-    <common-util.version>5</common-util.version>
-    <common-json.version>3</common-json.version>
-    <common-test-support.version>2</common-test-support.version>
+    <common-util.version>6-SNAPSHOT</common-util.version>
+    <common-json.version>4-SNAPSHOT</common-json.version>
+    <common-test-support.version>3-SNAPSHOT</common-test-support.version>
     <test.agent.args>-javaagent:${org.mockito:mockito-core:jar}</test.agent.args>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.http=jdk.httpserver</test.module.args>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>pl.piotrjanczukowicz</groupId>
+      <groupId>io.github.piotr-janczukowicz</groupId>
       <artifactId>common-util</artifactId>
       <version>${common-util.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>pl.piotrjanczukowicz</groupId>
+      <groupId>io.github.piotr-janczukowicz</groupId>
       <artifactId>common-json</artifactId>
       <version>${common-json.version}</version>
       <scope>compile</scope>
@@ -49,7 +49,7 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>pl.piotrjanczukowicz</groupId>
+      <groupId>io.github.piotr-janczukowicz</groupId>
       <artifactId>common-test-support</artifactId>
       <version>${common-test-support.version}</version>
       <scope>test</scope>
@@ -88,7 +88,7 @@
             </goals>
             <configuration>
               <includes>
-                <include>pl/piotrjanczukowicz/test/http/**</include>
+                <include>io/github/piotr_janczukowicz/test/http/**</include>
               </includes>
               <excludes>
                 <exclude>**/*Test.class</exclude>
