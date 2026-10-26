@@ -4,13 +4,13 @@ Shared HTTP utilities for Java callers: immutable request/response types, a tran
 
 ## Dependency
 
-Java library. Add Maven coordinates `io.github.piotr-janczukowicz:common-http:1`.
+Java library. Add Maven coordinates `io.github.piotr-janczukowicz:common-http:4`.
 
 ```xml
 <dependency>
   <groupId>io.github.piotr-janczukowicz</groupId>
   <artifactId>common-http</artifactId>
-  <version>1</version>
+  <version>4</version>
 </dependency>
 ```
 

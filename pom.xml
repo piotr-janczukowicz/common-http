@@ -14,7 +14,7 @@
   <packaging>jar</packaging>
 
   <name>common-http</name>
-  <description>Shared HTTP client and transport utilities</description>
+  <description>Immutable HTTP request and response types, an OkHttp transport with retry, rate-limit, concurrency and caching decorators, and a client with authentication, origin guard and polling</description>
   <url>https://github.com/piotr-janczukowicz/common-http</url>
 
   <properties>
