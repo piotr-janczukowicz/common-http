@@ -3,7 +3,6 @@ package io.github.piotr_janczukowicz.http.client;
 import static io.github.piotr_janczukowicz.http.HttpHeaderNames.LOCATION;
 import static io.github.piotr_janczukowicz.util.StringUtils.isBlank;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpErrorBodies;
 import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpMethod;
@@ -21,7 +20,6 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Transport failures stay as {@link java.io.IOException}.
  */
-@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "HttpHeaders is immutable")
 public class HttpException extends RuntimeException {
 
     @Serial

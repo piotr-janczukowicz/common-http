@@ -3,7 +3,6 @@ package io.github.piotr_janczukowicz.http;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireAtLeast;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -109,9 +108,6 @@ public sealed interface HttpBody permits HttpBody.Absent, HttpBody.Bytes, HttpBo
      * @return owned bytes, or {@code null}
      */
     @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
-    @SuppressFBWarnings(
-            value = "PZLA_PREFER_ZERO_LENGTH_ARRAYS",
-            justification = "null means the body is not held in memory")
     default byte @Nullable [] bytes() {
         return null;
     }
@@ -128,7 +124,6 @@ public sealed interface HttpBody permits HttpBody.Absent, HttpBody.Bytes, HttpBo
      */
     <T> T mapBytes(Function<byte[], T> present, Supplier<T> absent);
 
-    @SuppressFBWarnings(value = "UPM_UNCALLED_PRIVATE_METHOD", justification = "Called from the nested body records")
     private static <T> T withoutBytes(final Function<byte[], T> present, final Supplier<T> absent) {
         requireNonNull(present, "present");
         return requireNonNull(absent, "absent").get();
@@ -163,9 +158,6 @@ public sealed interface HttpBody permits HttpBody.Absent, HttpBody.Bytes, HttpBo
      *
      * @param bytes owned entity bytes
      */
-    @SuppressFBWarnings(
-            value = "EI_EXPOSE_REP",
-            justification = "HttpBody.of takes ownership; callers must not mutate the array")
     record Bytes(byte[] bytes) implements HttpBody {
 
         public Bytes {

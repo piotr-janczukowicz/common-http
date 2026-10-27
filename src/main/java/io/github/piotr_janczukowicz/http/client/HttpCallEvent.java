@@ -2,7 +2,6 @@ package io.github.piotr_janczukowicz.http.client;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpMethod;
 import java.time.Duration;
@@ -33,9 +32,6 @@ import org.jspecify.annotations.Nullable;
  *     limit, {@code statusCode} and {@code responseHeaders} describe that response and {@code failure} is the exception
  *     thrown to the caller
  */
-@SuppressFBWarnings(
-        value = "EI_EXPOSE_REP",
-        justification = "the failure is the exception that was thrown; observers are meant to read it")
 public record HttpCallEvent(
         HttpMethod method,
         String target,

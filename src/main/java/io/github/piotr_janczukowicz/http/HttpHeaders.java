@@ -7,7 +7,6 @@ import static io.github.piotr_janczukowicz.http.HttpHeaderNames.SET_COOKIE;
 import static io.github.piotr_janczukowicz.util.StringUtils.isBlank;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -139,9 +138,6 @@ public final class HttpHeaders {
      *
      * @return headers map
      */
-    @SuppressFBWarnings(
-            value = "EI_EXPOSE_REP",
-            justification = "headers is an unmodifiable case-insensitive map; copying would drop that lookup")
     public Map<String, String> asMap() {
         return headers;
     }

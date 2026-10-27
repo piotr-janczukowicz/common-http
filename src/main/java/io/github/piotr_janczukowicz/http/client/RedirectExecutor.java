@@ -6,7 +6,6 @@ import static io.github.piotr_janczukowicz.http.HttpHeaderNames.CONTENT_TYPE;
 import static io.github.piotr_janczukowicz.http.HttpHeaderNames.LOCATION;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpBody;
 import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpMethod;
@@ -41,9 +40,6 @@ import org.slf4j.LoggerFactory;
  * <p>Redirect failures report the request URI and the {@code Location} without user info, query, or fragment, because
  * they often carry signed tokens. Each followed hop is logged at debug level in that same form.
  */
-@SuppressFBWarnings(
-        value = "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION",
-        justification = "redirect policy failures are mapped to an unchecked API exception")
 final class RedirectExecutor {
 
     private static final Logger LOG = LoggerFactory.getLogger(RedirectExecutor.class);

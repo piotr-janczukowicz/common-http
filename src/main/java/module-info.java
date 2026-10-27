@@ -5,7 +5,6 @@ module common.http {
     requires common.util;
     requires transitive common.json;
     requires static org.jspecify;
-    requires static com.github.spotbugs.annotations;
 
     exports io.github.piotr_janczukowicz.http;
     exports io.github.piotr_janczukowicz.http.client;

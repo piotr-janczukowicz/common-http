@@ -1,7 +1,8 @@
 name: Release
 
-# Run by hand on main. Deploys the next integer version to GitHub Packages, tags it, creates the GitHub release and
-# bumps main to the next snapshot. Publishing to Maven Central is a separate workflow that takes the tag.
+# Run by hand on main. Deploys the next integer version to GitHub Packages, tags it and creates the GitHub release. The
+# version is the newest vN tag plus one (or the N-SNAPSHOT of the pom when that is higher); nothing is pushed to main,
+# so branch protection stays on. Publishing to Maven Central is a separate workflow that takes the tag.
 on:
   workflow_dispatch:
 
@@ -38,9 +39,10 @@ jobs:
             echo "::error::Expected version N-SNAPSHOT with integer N, found '$current'"
             exit 1
           fi
-          release=${BASH_REMATCH[1]}
-          echo "release=$release" >> "$GITHUB_OUTPUT"
-          echo "next=$((release + 1))-SNAPSHOT" >> "$GITHUB_OUTPUT"
+          floor=${BASH_REMATCH[1]}
+          last=$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed -E 's#.*refs/tags/v##' | grep -E '^[0-9]+$' | sort -n | tail -1 || true)
+          last=${last:-0}
+          echo "release=$(( floor > last ? floor : last + 1 ))" >> "$GITHUB_OUTPUT"
       - name: Fail if tag exists
         run: |
           if git ls-remote --exit-code --tags origin "refs/tags/v${{ steps.version.outputs.release }}"; then
@@ -50,16 +52,8 @@ jobs:
       - name: Set release version
         run: mvn -B -s .github/maven-settings.xml versions:set -DnewVersion=${{ steps.version.outputs.release }} -DgenerateBackupPoms=false
       - name: Deploy to GitHub Packages
-        run: mvn -B -s .github/maven-settings.xml deploy -DdeployAtEnd=false -Prelease
+        run: mvn -B -s .github/maven-settings.xml deploy -DdeployAtEnd=false -Prelease -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"
       - name: Tag and create GitHub release
         run: gh release create "v${{ steps.version.outputs.release }}" --target "$GITHUB_SHA" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Bump to next snapshot
-        run: |
-          git checkout -- pom.xml
-          mvn -B -s .github/maven-settings.xml versions:set -DnewVersion=${{ steps.version.outputs.next }} -DgenerateBackupPoms=false
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore: Bump version to ${{ steps.version.outputs.next }} [skip ci]"
-          git push origin HEAD:main

@@ -6,7 +6,6 @@ import static io.github.piotr_janczukowicz.http.HttpHeaderNames.ETAG;
 import static io.github.piotr_janczukowicz.http.HttpHeaderNames.RETRY_AFTER;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.util.DateTimeUtils;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -32,7 +31,6 @@ import org.slf4j.LoggerFactory;
  * @param headers response headers
  * @param body response body, possibly absent
  */
-@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "HttpHeaders is immutable")
 public record HttpResponse(int statusCode, HttpHeaders headers, HttpBody body) {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpResponse.class);

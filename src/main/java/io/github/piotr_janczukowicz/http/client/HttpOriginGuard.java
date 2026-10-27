@@ -2,7 +2,6 @@ package io.github.piotr_janczukowicz.http.client;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpMethod;
 import io.github.piotr_janczukowicz.http.uri.HttpUris;
 import io.github.piotr_janczukowicz.http.uri.ParsedUrl;
@@ -12,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Accepts or rejects absolute URIs against the API base origin and path prefix. */
-@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "invalid baseUri must fail construction")
 public class HttpOriginGuard {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpOriginGuard.class);

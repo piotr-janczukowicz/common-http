@@ -2,7 +2,6 @@ package io.github.piotr_janczukowicz.http;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,7 +18,6 @@ import org.jspecify.annotations.Nullable;
  * {@link #isStreaming()} is {@code false}, {@link #body()} reads the buffered bytes and {@link #bufferedResponse()}
  * returns the response.
  */
-@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "HttpHeaders is immutable")
 public final class HttpStreamResponse implements AutoCloseable {
 
     private final int statusCode;

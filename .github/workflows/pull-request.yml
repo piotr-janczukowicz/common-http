@@ -36,3 +36,8 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+      - name: Build the Central bundle without signing
+        run: mvn -B -s .github/maven-settings.xml verify -Pcentral -Prelease -Dgpg.skip=true
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}

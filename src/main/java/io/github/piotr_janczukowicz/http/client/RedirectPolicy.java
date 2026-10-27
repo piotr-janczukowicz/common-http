@@ -8,7 +8,6 @@ import static io.github.piotr_janczukowicz.http.HttpHeaderNames.USER_AGENT;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireAtLeast;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpMethod;
 import java.util.Locale;
 import java.util.Set;
@@ -27,7 +26,6 @@ import java.util.stream.Collectors;
  *     {@code Authorization}, {@code Proxy-Authorization} or {@code Cookie}, which carry credentials that must not reach
  *     another origin
  */
-@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "crossOrigin sets are copied to unmodifiable sets")
 public record RedirectPolicy(int maxHops, Set<HttpMethod> crossOriginMethods, Set<String> crossOriginHeaderNames) {
 
     private static final Set<String> CREDENTIAL_HEADERS = Set.of(

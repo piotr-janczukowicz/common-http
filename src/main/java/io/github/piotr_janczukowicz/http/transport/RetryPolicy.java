@@ -3,7 +3,6 @@ package io.github.piotr_janczukowicz.http.transport;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.isNonPositive;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpMethod;
 import io.github.piotr_janczukowicz.http.HttpRequest;
 import io.github.piotr_janczukowicz.http.HttpResponse;
@@ -59,9 +58,6 @@ final class RetryPolicy {
 
     private static final RandomGenerator DEFAULT_RANDOM = new RandomGenerator() {
         @Override
-        @SuppressFBWarnings(
-                value = "PREDICTABLE_RANDOM",
-                justification = "retry jitter only needs uncorrelated delays, not cryptographic randomness")
         public long nextLong() {
             return ThreadLocalRandom.current().nextLong();
         }

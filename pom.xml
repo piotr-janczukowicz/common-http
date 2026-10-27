@@ -5,7 +5,7 @@
   <parent>
     <groupId>io.github.piotr-janczukowicz</groupId>
     <artifactId>common-parent</artifactId>
-    <version>5</version>
+    <version>7</version>
     <relativePath/>
   </parent>
 
@@ -18,10 +18,9 @@
   <url>https://github.com/piotr-janczukowicz/common-http</url>
 
   <properties>
-    <common-util.version>6</common-util.version>
-    <common-json.version>4</common-json.version>
-    <common-test-support.version>3-SNAPSHOT</common-test-support.version>
-    <test.agent.args>-javaagent:${org.mockito:mockito-core:jar}</test.agent.args>
+    <common-util.version>7</common-util.version>
+    <common-json.version>5</common-json.version>
+    <common-test-support.version>3</common-test-support.version>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.http=jdk.httpserver</test.module.args>
   </properties>
 
@@ -52,16 +51,6 @@
       <groupId>io.github.piotr-janczukowicz</groupId>
       <artifactId>common-test-support</artifactId>
       <version>${common-test-support.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

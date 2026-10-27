@@ -2,7 +2,6 @@ package io.github.piotr_janczukowicz.http.client;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpBody;
 import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpMethod;
@@ -23,7 +22,6 @@ import java.util.Map;
  * @param headers headers of this call only
  * @param body request body, absent when there is none
  */
-@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "query is copied to an unmodifiable map")
 public record HttpCall(
         HttpMethod method, Target target, Map<String, List<String>> query, HttpHeaders headers, HttpBody body) {
 

@@ -4,7 +4,6 @@ import static io.github.piotr_janczukowicz.http.HttpHeaderNames.AUTHORIZATION;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNotBlank;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.uri.ParsedUrl;
 import java.net.URI;
 import java.util.Map;
@@ -27,7 +26,6 @@ import org.jspecify.annotations.Nullable;
  *     gives it, or {@code null} when there is none. It is never a secret: decorators key their per-credential state by
  *     it, through {@link #credentialKey()}, and without it they key by a digest of the {@code Authorization} header
  */
-@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "HttpHeaders is immutable")
 public record HttpRequest(
         HttpMethod method,
         ParsedUrl url,

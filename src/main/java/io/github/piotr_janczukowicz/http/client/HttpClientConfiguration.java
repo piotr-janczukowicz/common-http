@@ -2,7 +2,6 @@ package io.github.piotr_janczukowicz.http.client;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.uri.HttpUris;
 import io.github.piotr_janczukowicz.http.uri.ParsedUrl;
@@ -18,7 +17,6 @@ import java.net.URI;
  * @param defaultHeaders headers sent on every request, before the overlay headers of a call; an auth header of the same
  *     name wins
  */
-@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "HttpHeaders is immutable")
 public record HttpClientConfiguration(URI baseUri, HttpHeaders defaultHeaders) {
 
     private static final String BASE_URI = "baseUri";

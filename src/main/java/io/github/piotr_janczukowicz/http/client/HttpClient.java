@@ -2,7 +2,6 @@ package io.github.piotr_janczukowicz.http.client;
 
 import static io.github.piotr_janczukowicz.util.ValidationUtils.requireNonNull;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.piotr_janczukowicz.http.HttpHeaderNames;
 import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpRequest;
@@ -56,7 +55,6 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpClient.class);
     private static final String CALL = "call";
-    private static final String THROWS_RUNTIME_EXCEPTION = "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION";
 
     private final HttpTransport transport;
     private final HttpClientConfiguration clientConfiguration;
@@ -112,9 +110,6 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
     }
 
     @Override
-    @SuppressFBWarnings(
-            value = THROWS_RUNTIME_EXCEPTION,
-            justification = "unsuccessful HTTP status is mapped to an unchecked API exception")
     public final HttpResponse execute(
             final HttpCall call, final Set<Integer> expectedStatuses, final boolean followRedirects)
             throws IOException {
@@ -131,9 +126,6 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
     }
 
     @Override
-    @SuppressFBWarnings(
-            value = THROWS_RUNTIME_EXCEPTION,
-            justification = "unsuccessful HTTP status is mapped to an unchecked API exception")
     public final <T> T stream(final HttpCall call, final HttpStreamHandler<T> handler) throws IOException {
         requireNonNull(call, CALL);
         requireNonNull(handler, "handler");
@@ -215,9 +207,6 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
         return redirectOf(call, exchange(call, false));
     }
 
-    @SuppressFBWarnings(
-            value = THROWS_RUNTIME_EXCEPTION,
-            justification = "redirect failures are mapped to an unchecked API exception")
     private Optional<URI> redirectOf(final HttpCall call, final Exchange exchange) {
         if (RedirectExecutor.isRedirectStatus(exchange.response().statusCode())) {
             return Optional.of(redirectExecutor.requireRedirectLocation(exchange, call.method()));
@@ -274,9 +263,6 @@ public class HttpClient implements HttpClientExecutor, AutoCloseable {
         }
     }
 
-    @SuppressFBWarnings(
-            value = THROWS_RUNTIME_EXCEPTION,
-            justification = "rethrows the failure of the auth unchanged, after closing the response")
     private StreamExchange streamRenewingAuth(final HttpCall call, final HttpRequest sent) throws IOException {
         final StreamExchange first = redirectExecutor.stream(sent, redirectPolicy.maxHops(), true);
         final boolean isFinal;
