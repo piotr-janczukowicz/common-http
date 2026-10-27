@@ -144,14 +144,14 @@
                 <id>pmd-test</id>
                 <phase>process-test-classes</phase>
                 <goals>
-                  <goal>check</goal>
+                  <goal>pmd</goal>
                 </goals>
                 <configuration>
                   <includeTests>true</includeTests>
                   <rulesets combine.self="override">
                     <ruleset>${project.basedir}/pmd/pmd-test-ruleset.xml</ruleset>
                   </rulesets>
-                  <compileSourceRoots>
+                  <compileSourceRoots combine.self="override">
                     <compileSourceRoot>${project.basedir}/src/test/java</compileSourceRoot>
                   </compileSourceRoots>
                 </configuration>
