@@ -5,12 +5,11 @@ module common.http {
     requires common.util;
     requires transitive common.json;
     requires static org.jspecify;
-    requires static com.github.spotbugs.annotations;
 
-    exports pl.piotrjanczukowicz.http;
-    exports pl.piotrjanczukowicz.http.client;
-    exports pl.piotrjanczukowicz.http.client.authentication;
-    exports pl.piotrjanczukowicz.http.transport;
-    exports pl.piotrjanczukowicz.http.uri;
-    exports pl.piotrjanczukowicz.uri;
+    exports io.github.piotr_janczukowicz.http;
+    exports io.github.piotr_janczukowicz.http.client;
+    exports io.github.piotr_janczukowicz.http.client.authentication;
+    exports io.github.piotr_janczukowicz.http.transport;
+    exports io.github.piotr_janczukowicz.http.uri;
+    exports io.github.piotr_janczukowicz.uri;
 }
