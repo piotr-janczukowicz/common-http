@@ -18,6 +18,7 @@ import io.github.piotr_janczukowicz.test.http.StubHttpServer;
 import io.github.piotr_janczukowicz.testsupport.IntegrationTest;
 import io.github.piotr_janczukowicz.testsupport.LoopbackPorts;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -52,7 +53,7 @@ class OkHttpTransportNetworkIntegrationTest {
             host -> List.of(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}));
 
     @RegisterExtension
-    static final StubHttpServer http = new StubHttpServer();
+    static final StubHttpServer HTTP = new StubHttpServer();
 
     @TempDir
     static Path tempDir;
@@ -65,7 +66,7 @@ class OkHttpTransportNetworkIntegrationTest {
         final Path store = tempDir.resolve("server.p12");
         generateKeystore(store);
         keyStore = KeyStore.getInstance("PKCS12");
-        try (var in = Files.newInputStream(store)) {
+        try (InputStream in = Files.newInputStream(store)) {
             keyStore.load(in, STORE_PASSWORD.toCharArray());
         }
         https = new WireMockServer(WireMockConfiguration.wireMockConfig()
@@ -90,7 +91,7 @@ class OkHttpTransportNetworkIntegrationTest {
 
     @Test
     void execute_shouldUseHostResolver_whenConfigured() throws Exception {
-        http.stub(GET, "/ping", status(OK).body("pong".getBytes(StandardCharsets.UTF_8)));
+        HTTP.stub(GET, "/ping", status(OK).body("pong".getBytes(StandardCharsets.UTF_8)));
         final List<String> asked = new CopyOnWriteArrayList<>();
         final HttpTransportConfiguration configuration = configuration(HttpNetworkConfiguration.builder()
                 .hostResolver(host -> {
@@ -101,13 +102,13 @@ class OkHttpTransportNetworkIntegrationTest {
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
             final HttpResponse response = transport.execute(
-                    request("http://fixed-address.invalid:" + http.baseUri().getPort() + "/ping"));
+                    request("http://fixed-address.invalid:" + HTTP.baseUri().getPort() + "/ping"));
 
             assertThat(response.statusCode()).isEqualTo(OK.code());
         }
 
         assertThat(asked).containsExactly("fixed-address.invalid");
-        http.verifyRequested(GET, "/ping");
+        HTTP.verifyRequested(GET, "/ping");
     }
 
     @Test
@@ -116,7 +117,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 HttpNetworkConfiguration.builder().hostResolver(host -> null).build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final var request = request("http://null-answer.invalid/ping");
+            final HttpRequest request = request("http://null-answer.invalid/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -133,7 +134,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final var request = request("http://empty-answer.invalid/ping");
+            final HttpRequest request = request("http://empty-answer.invalid/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -143,7 +144,7 @@ class OkHttpTransportNetworkIntegrationTest {
 
     @Test
     void execute_shouldTryNextAddress_whenPostCannotConnectToFirstAddress() throws Exception {
-        http.stub(HttpMethod.POST, "/ping", status(OK));
+        HTTP.stub(HttpMethod.POST, "/ping", status(OK));
         final HttpTransportConfiguration configuration = configuration(HttpNetworkConfiguration.builder()
                 .hostResolver(host -> List.of(
                         InetAddress.getByAddress(new byte[] {127, 0, 0, 2}),
@@ -153,14 +154,14 @@ class OkHttpTransportNetworkIntegrationTest {
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
             final HttpResponse response = transport.execute(new HttpRequest(
                     HttpMethod.POST,
-                    URI.create("http://failover.invalid:" + http.baseUri().getPort() + "/ping"),
+                    URI.create("http://failover.invalid:" + HTTP.baseUri().getPort() + "/ping"),
                     HttpHeaders.empty(),
                     HttpBody.of(new byte[] {1})));
 
             assertThat(response.statusCode()).isEqualTo(OK.code());
         }
 
-        http.verifyRequested(HttpMethod.POST, "/ping", 1);
+        HTTP.verifyRequested(HttpMethod.POST, "/ping", 1);
     }
 
     @Test
@@ -172,7 +173,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final var request = request("http://nowhere.invalid:80/ping");
+            final HttpRequest request = request("http://nowhere.invalid:80/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -182,9 +183,9 @@ class OkHttpTransportNetworkIntegrationTest {
 
     @Test
     void execute_shouldGoThroughHttpProxy_whenConfigured() throws Exception {
-        http.stub(GET, "/ping", status(OK).body("pong".getBytes(StandardCharsets.UTF_8)));
+        HTTP.stub(GET, "/ping", status(OK).body("pong".getBytes(StandardCharsets.UTF_8)));
         final HttpTransportConfiguration configuration = configuration(HttpNetworkConfiguration.builder()
-                .proxy(HttpProxy.http("127.0.0.1", http.baseUri().getPort()))
+                .proxy(HttpProxy.http("127.0.0.1", HTTP.baseUri().getPort()))
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
@@ -193,18 +194,18 @@ class OkHttpTransportNetworkIntegrationTest {
             assertThat(response.statusCode()).isEqualTo(OK.code());
         }
 
-        http.verifyRequested(GET, "/ping");
+        HTTP.verifyRequested(GET, "/ping");
     }
 
     @Test
     void execute_shouldAnswerProxyChallengeWithCredentials_whenProxyRequiresThem() throws Exception {
-        http.stub(
+        HTTP.stub(
                 GET,
                 "/ping",
                 status(407).header("Proxy-Authenticate", "Basic realm=\"proxy\""),
                 status(OK).body("pong".getBytes(StandardCharsets.UTF_8)));
         final HttpTransportConfiguration configuration = configuration(HttpNetworkConfiguration.builder()
-                .proxy(HttpProxy.http("127.0.0.1", http.baseUri().getPort()).withCredentials("octo", "s3cret"))
+                .proxy(HttpProxy.http("127.0.0.1", HTTP.baseUri().getPort()).withCredentials("octo", "s3cret"))
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
@@ -213,8 +214,8 @@ class OkHttpTransportNetworkIntegrationTest {
             assertThat(response.statusCode()).isEqualTo(OK.code());
         }
 
-        http.verifyRequested(GET, "/ping", 2);
-        http.verifyHeader(
+        HTTP.verifyRequested(GET, "/ping", 2);
+        HTTP.verifyHeader(
                 GET,
                 "/ping",
                 "Proxy-Authorization",
@@ -223,9 +224,9 @@ class OkHttpTransportNetworkIntegrationTest {
 
     @Test
     void execute_shouldReturnProxyAuthRequired_whenCredentialsAreRejected() throws Exception {
-        http.stub(GET, "/ping", status(407).header("Proxy-Authenticate", "Basic realm=\"proxy\""));
+        HTTP.stub(GET, "/ping", status(407).header("Proxy-Authenticate", "Basic realm=\"proxy\""));
         final HttpTransportConfiguration configuration = configuration(HttpNetworkConfiguration.builder()
-                .proxy(HttpProxy.http("127.0.0.1", http.baseUri().getPort()).withCredentials("octo", "wrong"))
+                .proxy(HttpProxy.http("127.0.0.1", HTTP.baseUri().getPort()).withCredentials("octo", "wrong"))
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
@@ -234,7 +235,7 @@ class OkHttpTransportNetworkIntegrationTest {
             assertThat(response.statusCode()).isEqualTo(407);
         }
 
-        http.verifyRequested(GET, "/ping", 2);
+        HTTP.verifyRequested(GET, "/ping", 2);
     }
 
     @Test
@@ -245,7 +246,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 .build());
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final var request = request("http://upstream.invalid/ping");
+            final HttpRequest request = request("http://upstream.invalid/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -260,7 +261,7 @@ class OkHttpTransportNetworkIntegrationTest {
         };
         try (HttpTransport transport = HttpTransports.okHttp(configuration(
                 HttpNetworkConfiguration.builder().hostResolver(brokenResolver).build()))) {
-            final var request = request("http://upstream.invalid/ping");
+            final HttpRequest request = request("http://upstream.invalid/ping");
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -273,7 +274,7 @@ class OkHttpTransportNetworkIntegrationTest {
         try (HttpTransport transport = HttpTransports.okHttp(configuration(HttpNetworkConfiguration.builder()
                 .hostResolver(IPV4_ONLY_RESOLVER)
                 .build()))) {
-            final var httpsRequest = httpsRequest();
+            final HttpRequest httpsRequest = httpsRequest();
 
             final Throwable thrown = catchThrowable(() -> transport.execute(httpsRequest));
 
@@ -307,7 +308,7 @@ class OkHttpTransportNetworkIntegrationTest {
                 trusting().certificatePin("localhost", backupPin()).build();
 
         try (HttpTransport transport = HttpTransports.okHttp(configuration(network))) {
-            final var httpsRequest = httpsRequest();
+            final HttpRequest httpsRequest = httpsRequest();
 
             final Throwable thrown = catchThrowable(() -> transport.execute(httpsRequest));
 

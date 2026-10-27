@@ -80,7 +80,7 @@ class HttpNetworkConfigurationTest {
                 .certificatePin("a.example", PIN_A)
                 .build();
 
-        final var certificatePins = config.certificatePins();
+        final Map<String, Set<String>> certificatePins = config.certificatePins();
 
         final Set<String> pins = Set.of(PIN_B);
 

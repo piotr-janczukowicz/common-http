@@ -32,7 +32,7 @@ class HttpBodyUploadIntegrationTest {
     private static final int FIVE_MIB = 5 * 1024 * 1024;
 
     @RegisterExtension
-    static final StubHttpServer http = new StubHttpServer();
+    static final StubHttpServer HTTP = new StubHttpServer();
 
     @TempDir
     Path tempDir;
@@ -56,33 +56,33 @@ class HttpBodyUploadIntegrationTest {
         final byte[] payload = payload();
         final Path file = tempDir.resolve("asset.bin");
         Files.write(file, payload);
-        http.stub(POST, UPLOAD_PATH, OK.code());
+        HTTP.stub(POST, UPLOAD_PATH, OK.code());
 
         try (inner) {
             inner.execute(post(HttpBody.ofFile(file)));
         }
 
-        http.verifyRequested(POST, UPLOAD_PATH);
-        http.verifyBody(POST, UPLOAD_PATH, payload);
-        http.verifyHeader(POST, UPLOAD_PATH, CONTENT_LENGTH, Integer.toString(FIVE_MIB));
+        HTTP.verifyRequested(POST, UPLOAD_PATH);
+        HTTP.verifyBody(POST, UPLOAD_PATH, payload);
+        HTTP.verifyHeader(POST, UPLOAD_PATH, CONTENT_LENGTH, Integer.toString(FIVE_MIB));
     }
 
     private void assertStreamUpload(final HttpTransport inner) throws Exception {
         final byte[] payload = payload();
-        http.stub(POST, UPLOAD_PATH, OK.code());
+        HTTP.stub(POST, UPLOAD_PATH, OK.code());
 
         try (inner) {
             inner.execute(post(HttpBody.ofStream(() -> new ByteArrayInputStream(payload), payload.length)));
         }
 
-        http.verifyRequested(POST, UPLOAD_PATH);
-        http.verifyBody(POST, UPLOAD_PATH, payload);
-        http.verifyHeader(POST, UPLOAD_PATH, CONTENT_LENGTH, Integer.toString(FIVE_MIB));
+        HTTP.verifyRequested(POST, UPLOAD_PATH);
+        HTTP.verifyBody(POST, UPLOAD_PATH, payload);
+        HTTP.verifyHeader(POST, UPLOAD_PATH, CONTENT_LENGTH, Integer.toString(FIVE_MIB));
     }
 
     private void assertStreamRetry(final HttpTransport inner) throws Exception {
         final byte[] payload = payload();
-        http.stub(POST, UPLOAD_PATH, status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"), status(OK));
+        HTTP.stub(POST, UPLOAD_PATH, status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"), status(OK));
 
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
                 inner,
@@ -97,12 +97,12 @@ class HttpBodyUploadIntegrationTest {
             assertThat(response.statusCode()).isEqualTo(OK.code());
         }
 
-        http.verifyRequested(POST, UPLOAD_PATH, 2);
-        http.verifyBody(POST, UPLOAD_PATH, payload);
+        HTTP.verifyRequested(POST, UPLOAD_PATH, 2);
+        HTTP.verifyBody(POST, UPLOAD_PATH, payload);
     }
 
     private HttpRequest post(final HttpBody body) {
-        return new HttpRequest(POST, http.uri(UPLOAD_PATH), HttpHeaders.empty(), body);
+        return new HttpRequest(POST, HTTP.uri(UPLOAD_PATH), HttpHeaders.empty(), body);
     }
 
     private static byte[] payload() {
@@ -121,7 +121,7 @@ class HttpBodyUploadIntegrationTest {
     void execute_shouldReopenStreamForEachAttempt_whenOkHttpTransportRetriesAfter429() throws Exception {
         final byte[] payload = {1, 2, 3};
         final AtomicInteger opened = new AtomicInteger();
-        http.stub(POST, UPLOAD_PATH, status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"), status(OK));
+        HTTP.stub(POST, UPLOAD_PATH, status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"), status(OK));
 
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
                 okHttp(),

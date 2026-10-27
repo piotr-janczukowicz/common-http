@@ -37,7 +37,7 @@ class HttpAcceptedPollingTest {
 
     @Test
     void constructor_shouldThrow_whenDelayNegative() {
-        final var duration = Duration.ofSeconds(-1);
+        final Duration duration = Duration.ofSeconds(-1);
 
         final Throwable thrown = catchThrowable(() -> new HttpAcceptedPolling(2, duration));
 

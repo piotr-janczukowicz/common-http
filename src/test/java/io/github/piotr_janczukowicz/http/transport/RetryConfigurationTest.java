@@ -7,7 +7,7 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import io.github.piotr_janczukowicz.http.HttpMethod;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.time.Duration;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -170,7 +170,7 @@ class RetryConfigurationTest {
 
     @Test
     void build_shouldCopyIoRetryableMethods_whenSourceMutated() {
-        final Set<HttpMethod> methods = new HashSet<>(Set.of(HttpMethod.GET));
+        final Set<HttpMethod> methods = EnumSet.of(HttpMethod.GET);
         final RetryConfiguration config =
                 RetryConfiguration.builder().ioRetryableMethods(methods).build();
 
@@ -181,7 +181,7 @@ class RetryConfigurationTest {
 
     @Test
     void ioRetryableMethods_shouldCopySet_whenMutatedBeforeBuild() {
-        final Set<HttpMethod> methods = new HashSet<>(Set.of(HttpMethod.GET));
+        final Set<HttpMethod> methods = EnumSet.of(HttpMethod.GET);
         final RetryConfiguration.Builder builder = RetryConfiguration.builder().ioRetryableMethods(methods);
         methods.add(HttpMethod.POST);
 
@@ -412,11 +412,11 @@ class RetryConfigurationTest {
                 Duration.ofSeconds(20),
                 Duration.ofHours(1));
 
-        final var attempts = valid.attempts();
-        final var jitter = valid.jitter();
-        final var retryable = valid.retryable();
-        final var rateLimitDetector = valid.rateLimitDetector();
-        final var rateLimitEventListener = valid.rateLimitEventListener();
+        final RetryConfiguration.AttemptBudgets attempts = valid.attempts();
+        final RetryConfiguration.Jitter jitter = valid.jitter();
+        final RetryConfiguration.Retryable retryable = valid.retryable();
+        final RateLimitDetector rateLimitDetector = valid.rateLimitDetector();
+        final RateLimitEventListener rateLimitEventListener = valid.rateLimitEventListener();
 
         final Throwable thrown = catchThrowable(() -> new RetryConfiguration(
                 attempts, waits, jitter, retryable, rateLimitDetector, true, rateLimitEventListener, null));

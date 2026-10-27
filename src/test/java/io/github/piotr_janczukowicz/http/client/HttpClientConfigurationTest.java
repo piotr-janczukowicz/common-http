@@ -56,7 +56,7 @@ class HttpClientConfigurationTest {
 
     @Test
     void constructor_shouldThrow_whenBaseUriNull() {
-        final var headers = HttpHeaders.empty();
+        final HttpHeaders headers = HttpHeaders.empty();
 
         final Throwable thrown = catchThrowable(() -> new HttpClientConfiguration(null, headers));
 

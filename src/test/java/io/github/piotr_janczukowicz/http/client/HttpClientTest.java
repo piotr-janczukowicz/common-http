@@ -126,7 +126,7 @@ class HttpClientTest {
                     throw new UncheckedIOException("could not fetch an installation token", failure);
                 }))
                 .build()) {
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -157,7 +157,7 @@ class HttpClientTest {
                         HttpStatus.OK.code(), HttpHeaders.empty(), failingToClose(closeFailure)));
 
         try (final HttpClient client = client()) {
-            final var call = HttpCall.get("/zip");
+            final HttpCall call = HttpCall.get("/zip");
 
             final Throwable thrown = catchThrowable(() -> client.stream(call, response -> {
                 throw handlerFailure;
@@ -174,7 +174,7 @@ class HttpClientTest {
         statuses.add(null);
 
         try (final HttpClient client = client()) {
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             final Throwable thrown = catchThrowable(() -> client.execute(call, statuses, true));
 
@@ -193,7 +193,7 @@ class HttpClientTest {
                     throw new UncheckedIOException("could not fetch an installation token", failure);
                 }))
                 .build()) {
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             final Throwable thrown = catchThrowable(() -> client.stream(call, HttpStreamResponse::statusCode));
 
@@ -219,7 +219,7 @@ class HttpClientTest {
                 .thenReturn(new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), null));
 
         try (final HttpClient client = client()) {
-            final var call = HttpCall.get("/missing");
+            final HttpCall call = HttpCall.get("/missing");
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -229,9 +229,9 @@ class HttpClientTest {
 
     @Test
     void close_shouldCloseTransport_whenClientClosed() {
-        try (final HttpClient client = client()) {
-            client.hashCode();
-        }
+        final HttpClient client = client();
+
+        client.close();
 
         verify(transport).close();
     }
@@ -275,7 +275,7 @@ class HttpClientTest {
     @Test
     void execute_shouldReject_whenAbsoluteUriTargetHasDotSegments() {
         try (final HttpClient client = client()) {
-            final var call = HttpCall.get(URI.create("https://api.example.test/a/%2e%2e/b"));
+            final HttpCall call = HttpCall.get(URI.create("https://api.example.test/a/%2e%2e/b"));
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -286,7 +286,7 @@ class HttpClientTest {
     @Test
     void execute_shouldReject_whenAbsoluteUriTargetIsOnAnotherOrigin() {
         try (final HttpClient client = client()) {
-            final var call = HttpCall.get(URI.create("https://evil.test/x"));
+            final HttpCall call = HttpCall.get(URI.create("https://evil.test/x"));
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -318,7 +318,7 @@ class HttpClientTest {
     }
 
     private HttpRequest capture() throws IOException {
-        final var captor = ArgumentCaptor.forClass(HttpRequest.class);
+        final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
         verify(transport).execute(captor.capture());
         return captor.getValue();
     }
@@ -347,7 +347,7 @@ class HttpClientTest {
         when(transport.execute(any())).thenReturn(new HttpResponse(HttpStatus.OK.code(), HttpHeaders.empty(), null));
 
         try (final HttpClient client = client()) {
-            final var call = HttpCall.get("/tarball").withQuery(Map.of("token", "secret"));
+            final HttpCall call = HttpCall.get("/tarball").withQuery(Map.of("token", "secret"));
 
             final Throwable thrown = catchThrowable(() -> client.redirectLocation(call));
 
@@ -365,7 +365,7 @@ class HttpClientTest {
                 .thenReturn(new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (final HttpClient client = client()) {
-            final var call = HttpCall.get("/missing");
+            final HttpCall call = HttpCall.get("/missing");
 
             final Throwable thrown = catchThrowable(() -> client.redirectLocation(call));
 
@@ -417,7 +417,7 @@ class HttpClientTest {
                 .thenReturn(new HttpResponse(HttpStatus.NOT_FOUND.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (final HttpClient client = client()) {
-            final var call = HttpCall.get("/missing");
+            final HttpCall call = HttpCall.get("/missing");
 
             final Throwable thrown = catchThrowable(() -> client.redirectLocationIfAny(call));
 

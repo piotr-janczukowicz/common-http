@@ -291,7 +291,7 @@ class ConcurrencyLimitingHttpTransportTest {
 
     @Test
     void constructor_shouldThrow_whenMaxSlotWaitNotPositive() {
-        final var mock = HttpTransportMocks.mock();
+        final HttpTransport mock = HttpTransportMocks.mock();
 
         final Throwable thrown = catchThrowable(() -> new ConcurrencyLimitingHttpTransport(mock, 1, Duration.ZERO));
 
@@ -300,7 +300,7 @@ class ConcurrencyLimitingHttpTransportTest {
 
     @Test
     void constructor_shouldThrow_whenLimitNotPositive() {
-        final var mock = HttpTransportMocks.mock();
+        final HttpTransport mock = HttpTransportMocks.mock();
 
         final Throwable thrown = catchThrowable(() -> new ConcurrencyLimitingHttpTransport(mock, 0));
 
@@ -326,8 +326,8 @@ class ConcurrencyLimitingHttpTransportTest {
 
     @Test
     void constructor_shouldThrow_whenMaxSlotWaitAboveLimit() {
-        final var mock = HttpTransportMocks.mock();
-        final var duration = Duration.ofDays(365 * 400);
+        final HttpTransport mock = HttpTransportMocks.mock();
+        final Duration duration = Duration.ofDays(365 * 400);
 
         final Throwable thrown = catchThrowable(() -> new ConcurrencyLimitingHttpTransport(mock, 1, duration));
 

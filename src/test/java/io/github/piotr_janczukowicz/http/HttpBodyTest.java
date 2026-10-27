@@ -215,7 +215,7 @@ class HttpBodyTest {
                 },
                 1);
 
-        final var openStream = body.openStream();
+        final InputStream openStream = body.openStream();
 
         final Throwable thrown = catchThrowable(openStream::readAllBytes);
 

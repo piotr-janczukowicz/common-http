@@ -651,7 +651,7 @@ class RetryPolicyTest {
         final HttpResponse unavailable =
                 HttpResponses.of(HttpStatus.SERVICE_UNAVAILABLE.code(), Map.of(RETRY_AFTER, List.of(retryAfter)), null);
 
-        final var policy = policy(RetryConfiguration.defaults());
+        final RetryPolicy policy = policy(RetryConfiguration.defaults());
 
         final Throwable thrown = catchThrowable(() -> policy.serverErrorDelay(GET, unavailable, 1));
 
@@ -682,7 +682,7 @@ class RetryPolicyTest {
         final HttpResponse limited =
                 HttpResponses.of(HttpStatus.TOO_MANY_REQUESTS.code(), Map.of(RETRY_AFTER, List.of(retryAfter)), null);
 
-        final var policy = policy(RetryConfiguration.defaults());
+        final RetryPolicy policy = policy(RetryConfiguration.defaults());
 
         final Throwable thrown = catchThrowable(() -> rateLimitDelay(policy, limited, 1));
 
@@ -851,7 +851,7 @@ class RetryPolicyTest {
                 .maxBackoff(Duration.ofDays(1))
                 .build());
 
-        assertThat(policy.backoffForAttempt(20)).isEqualTo(Duration.ofSeconds(65536));
+        assertThat(policy.backoffForAttempt(20)).isEqualTo(Duration.ofSeconds(65_536));
     }
 
     @Test
@@ -864,7 +864,7 @@ class RetryPolicyTest {
 
     @Test
     void constructor_shouldThrow_whenClockIsNull() {
-        final var config = RetryConfiguration.defaults();
+        final RetryConfiguration config = RetryConfiguration.defaults();
 
         final Throwable thrown = catchThrowable(() -> new RetryPolicy(config, null));
 
@@ -873,8 +873,8 @@ class RetryPolicyTest {
 
     @Test
     void constructor_shouldThrow_whenRandomIsNull() {
-        final var config = RetryConfiguration.defaults();
-        final var clock = Clock.systemUTC();
+        final RetryConfiguration config = RetryConfiguration.defaults();
+        final Clock clock = Clock.systemUTC();
 
         final Throwable thrown = catchThrowable(() -> new RetryPolicy(config, clock, null));
 

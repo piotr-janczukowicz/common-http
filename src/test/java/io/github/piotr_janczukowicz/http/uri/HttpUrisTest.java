@@ -38,7 +38,7 @@ class HttpUrisTest {
     @ParameterizedTest
     @ValueSource(strings = {"mailto:x@example.test", "ftp://example.test/", "/relative/path"})
     void withTrailingSlash_shouldThrowIllegalArgument_whenUriIsNotHttp(final String uri) {
-        final var uriValue = URI.create(uri);
+        final URI uriValue = URI.create(uri);
 
         final Throwable thrown = catchThrowable(() -> HttpUris.withTrailingSlash(uriValue, "baseUri"));
 
@@ -49,7 +49,7 @@ class HttpUrisTest {
 
     @Test
     void resolveApiPath_shouldThrowIllegalArgument_whenBaseIsNotHttp() {
-        final var uri = URI.create("ftp://example.test/");
+        final URI uri = URI.create("ftp://example.test/");
 
         final Map<String, List<String>> query = Map.of();
 
@@ -60,7 +60,7 @@ class HttpUrisTest {
 
     @Test
     void resolveReference_shouldThrowIllegalArgument_whenBaseIsNotHttp() {
-        final var uri = URI.create("mailto:x@example.test");
+        final URI uri = URI.create("mailto:x@example.test");
 
         final Throwable thrown = catchThrowable(() -> HttpUris.resolveReference(uri, "next"));
 
@@ -200,7 +200,7 @@ class HttpUrisTest {
                 "\\\\api.example.test:81/svc/v1/x"
             })
     void resolveApiPath_shouldReject_whenPathIsNotRelativeApiPath(final String path) {
-        final var uri = URI.create("https://api.example.test/svc/v1/");
+        final URI uri = URI.create("https://api.example.test/svc/v1/");
 
         final Map<String, List<String>> query = Map.of();
 
@@ -329,7 +329,7 @@ class HttpUrisTest {
     void copyQueryValues_shouldReturnImmutableValueLists_whenCalled() {
         final Map<String, List<String>> copy = HttpUris.copyQueryValues(Map.of("q", List.of("a")));
 
-        final var get = copy.get("q");
+        final List<String> get = copy.get("q");
 
         final Throwable thrown = catchThrowable(() -> get.add("b"));
 
@@ -383,7 +383,7 @@ class HttpUrisTest {
 
     @Test
     void resolve_shouldThrowIllegalArgument_whenRelativePathIsNotHttpReference() {
-        final var uri = URI.create("https://api.example.test/");
+        final URI uri = URI.create("https://api.example.test/");
 
         final Map<String, List<String>> query = Map.of();
 

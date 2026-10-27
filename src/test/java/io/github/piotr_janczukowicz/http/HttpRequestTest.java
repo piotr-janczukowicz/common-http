@@ -49,7 +49,7 @@ class HttpRequestTest {
 
     @Test
     void constructor_shouldThrow_whenMethodIsNull() {
-        final var headers = HttpHeaders.empty();
+        final HttpHeaders headers = HttpHeaders.empty();
 
         final Throwable thrown = catchThrowable(() -> new HttpRequest(null, API_URI, headers, null));
 
@@ -58,7 +58,7 @@ class HttpRequestTest {
 
     @Test
     void constructor_shouldThrow_whenUriIsNull() {
-        final var headers = HttpHeaders.empty();
+        final HttpHeaders headers = HttpHeaders.empty();
 
         final Throwable thrown = catchThrowable(() -> new HttpRequest(HttpMethod.GET, (URI) null, headers, null));
 
@@ -115,8 +115,8 @@ class HttpRequestTest {
 
     @Test
     void constructor_shouldThrow_whenCredentialIdIsBlank() {
-        final var url = ParsedUrl.of(API_URI);
-        final var headers = HttpHeaders.empty();
+        final ParsedUrl url = ParsedUrl.of(API_URI);
+        final HttpHeaders headers = HttpHeaders.empty();
 
         final Throwable thrown = catchThrowable(() -> new HttpRequest(HttpMethod.GET, url, headers, null, " "));
 
@@ -143,8 +143,8 @@ class HttpRequestTest {
             value = HttpMethod.class,
             names = {"GET", "HEAD"})
     void constructor_shouldThrow_whenGetOrHeadHasBody(final HttpMethod method) {
-        final var headers = HttpHeaders.empty();
-        final var body = HttpBody.of(new byte[] {1});
+        final HttpHeaders headers = HttpHeaders.empty();
+        final HttpBody body = HttpBody.of(new byte[] {1});
 
         final Throwable thrown = catchThrowable(() -> new HttpRequest(method, API_URI, headers, body));
 

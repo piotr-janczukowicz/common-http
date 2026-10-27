@@ -40,6 +40,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -194,7 +195,7 @@ class AbstractHttpCallerTest {
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
 
-            final var call = HttpCall.get("/x");
+            final HttpCall call = HttpCall.get("/x");
 
             final Throwable thrown = catchThrowable(
                     () -> caller.fetchByStatus(call, body -> "other", Map.of(HttpStatus.FOUND, body -> "found")));
@@ -494,7 +495,7 @@ class AbstractHttpCallerTest {
         final Throwable thrown;
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
-            final var call = HttpCall.post("/user");
+            final HttpCall call = HttpCall.post("/user");
 
             thrown = catchThrowable(() -> caller.fetchByStatus(
                     call, body -> body.as(User.class), Map.of(HttpStatus.NO_CONTENT, body -> body.as(User.class))));
@@ -513,7 +514,7 @@ class AbstractHttpCallerTest {
         final Throwable thrown;
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
-            final var call = HttpCall.get("/users");
+            final HttpCall call = HttpCall.get("/users");
 
             thrown = catchThrowable(() -> caller.fetchByStatus(
                     call, body -> body.as(USERS), Map.of(HttpStatus.NO_CONTENT, body -> body.as(USERS))));
@@ -532,7 +533,7 @@ class AbstractHttpCallerTest {
         final boolean isFlagRestored;
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             thrown = catchThrowable(() -> caller.fetchWhenReady(call, User.class, slow));
             isFlagRestored = Thread.currentThread().isInterrupted();
@@ -576,7 +577,7 @@ class AbstractHttpCallerTest {
 
         assertThat(result).isEqualTo(target);
         assertThat(Files.readAllBytes(target)).containsExactly(1, 2, 3);
-        try (var files = Files.list(tempDir)) {
+        try (Stream<Path> files = Files.list(tempDir)) {
             assertThat(files).containsExactly(target);
         }
     }
@@ -591,13 +592,13 @@ class AbstractHttpCallerTest {
         final Throwable thrown;
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
-            final var call = HttpCall.get("/zip");
+            final HttpCall call = HttpCall.get("/zip");
 
             thrown = catchThrowable(() -> caller.download(call, target));
         }
 
         assertThat(thrown).isInstanceOf(HttpException.class);
-        try (var files = Files.list(tempDir)) {
+        try (Stream<Path> files = Files.list(tempDir)) {
             assertThat(files).isEmpty();
         }
     }
@@ -764,7 +765,7 @@ class AbstractHttpCallerTest {
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
 
-            final var call = HttpCall.get("/users");
+            final HttpCall call = HttpCall.get("/users");
 
             final Throwable thrown = catchThrowable(() -> caller.fetchUnless(call, USERS, HttpStatus.NOT_FOUND));
 
@@ -825,7 +826,7 @@ class AbstractHttpCallerTest {
         try (final HttpClient client = client()) {
             final HttpClientCaller caller = caller(client);
 
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             final Throwable thrown = catchThrowable(() -> caller.fetchUnless(call, User.class, HttpStatus.NOT_FOUND));
 

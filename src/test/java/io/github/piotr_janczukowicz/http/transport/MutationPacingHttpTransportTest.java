@@ -235,8 +235,8 @@ class MutationPacingHttpTransportTest {
     void constructor_shouldRejectInterval_whenNotPositive(final long millis) {
         final ScriptedTransport delegate = ScriptedTransport.replying();
 
-        final var transport = delegate.transport();
-        final var duration = Duration.ofMillis(millis);
+        final HttpTransport transport = delegate.transport();
+        final Duration duration = Duration.ofMillis(millis);
 
         final Throwable thrown = catchThrowable(() -> new MutationPacingHttpTransport(
                 transport, duration, MutationPacingHttpTransport.DEFAULT_MUTATION_METHODS));
@@ -248,7 +248,7 @@ class MutationPacingHttpTransportTest {
     void constructor_shouldRejectMethods_whenEmpty() {
         final ScriptedTransport delegate = ScriptedTransport.replying();
 
-        final var transport = delegate.transport();
+        final HttpTransport transport = delegate.transport();
 
         final Set<HttpMethod> methods = Set.of();
 

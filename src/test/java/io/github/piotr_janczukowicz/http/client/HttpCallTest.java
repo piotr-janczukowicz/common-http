@@ -175,7 +175,7 @@ class HttpCallTest {
 
     @Test
     void requirePath_shouldThrow_whenTargetIsAbsoluteUri() {
-        final HttpCall call = HttpCall.of(HttpMethod.GET, java.net.URI.create("https://api.example.test/issues"));
+        final HttpCall call = HttpCall.of(HttpMethod.GET, URI.create("https://api.example.test/issues"));
 
         final Throwable thrown = catchThrowable(call::requirePath);
 

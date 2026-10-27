@@ -37,7 +37,7 @@ class ParsedUrlTest {
 
     @Test
     void of_shouldThrow_whenUriIsNotAbsoluteHttp() {
-        final var uri = URI.create("mailto:dev@example.com");
+        final URI uri = URI.create("mailto:dev@example.com");
 
         final Throwable thrown = catchThrowable(() -> ParsedUrl.of(uri));
 
