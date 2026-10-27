@@ -465,9 +465,9 @@ class RateLimitGateTest {
 
     @Test
     void constructor_shouldThrow_whenClockIsNull() {
-        final var duration = Duration.ofHours(1);
-        final var durationValue = Duration.ofSeconds(60);
-        final var duration3 = Duration.ofMinutes(5);
+        final Duration duration = Duration.ofHours(1);
+        final Duration durationValue = Duration.ofSeconds(60);
+        final Duration duration3 = Duration.ofMinutes(5);
 
         final Throwable thrown = catchThrowable(() -> new RateLimitGate(null, durationValue, duration3, duration));
 

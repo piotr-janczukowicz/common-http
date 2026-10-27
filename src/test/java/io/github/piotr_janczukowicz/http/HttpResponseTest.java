@@ -66,7 +66,7 @@ class HttpResponseTest {
 
     @Test
     void constructor_shouldThrow_whenStatusCodeOutOfRange() {
-        final var headers = HttpHeaders.empty();
+        final HttpHeaders headers = HttpHeaders.empty();
 
         final Throwable thrown = catchThrowable(() -> new HttpResponse(99, headers, null));
 

@@ -12,16 +12,16 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class ScriptedHttpServer implements AutoCloseable {
 
+    private final LoopbackHttpServer server;
+    private final AtomicInteger calls = new AtomicInteger();
+    private final AtomicInteger disconnects = new AtomicInteger();
+    private final AtomicReference<Throwable> scriptFailure = new AtomicReference<>();
+
     @FunctionalInterface
     public interface Script {
 
         void run(int call, HttpExchange exchange) throws Exception;
     }
-
-    private final LoopbackHttpServer server;
-    private final AtomicInteger calls = new AtomicInteger();
-    private final AtomicInteger disconnects = new AtomicInteger();
-    private final AtomicReference<Throwable> scriptFailure = new AtomicReference<>();
 
     public ScriptedHttpServer(final Script script) throws IOException {
         this.server = LoopbackHttpServer.start("/", exchange -> {

@@ -9,6 +9,7 @@ import io.github.piotr_janczukowicz.http.HttpHeaders;
 import io.github.piotr_janczukowicz.http.HttpMethod;
 import io.github.piotr_janczukowicz.http.HttpRequest;
 import io.github.piotr_janczukowicz.http.HttpResponse;
+import io.github.piotr_janczukowicz.http.HttpStreamResponse;
 import io.github.piotr_janczukowicz.testsupport.MutableClock;
 import io.github.piotr_janczukowicz.testsupport.UnitTest;
 import java.net.URI;
@@ -65,7 +66,7 @@ class ScriptedTransportTest {
     void stream_shouldRecordRequestAndBufferReply_whenStreaming() throws Exception {
         final ScriptedTransport scripted = ScriptedTransport.replying(response(200, "body"));
 
-        try (var stream = scripted.transport().stream(request("/s"))) {
+        try (HttpStreamResponse stream = scripted.transport().stream(request("/s"))) {
             assertThat(stream.statusCode()).isEqualTo(200);
         }
 

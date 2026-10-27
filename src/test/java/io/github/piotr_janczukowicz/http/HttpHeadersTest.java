@@ -522,7 +522,7 @@ class HttpHeadersTest {
         final HttpHeaders base = HttpHeaders.of("A", "1");
         final HttpHeaders[] more = null;
 
-        final var headers = HttpHeaders.empty();
+        final HttpHeaders headers = HttpHeaders.empty();
 
         final Throwable thrown = catchThrowable(() -> base.merge(headers, more));
 
@@ -534,7 +534,7 @@ class HttpHeadersTest {
         final HttpHeaders base = HttpHeaders.of("A", "1");
         final HttpHeaders later = null;
 
-        final var headers = HttpHeaders.empty();
+        final HttpHeaders headers = HttpHeaders.empty();
 
         final Throwable thrown = catchThrowable(() -> base.merge(headers, later));
 
@@ -557,7 +557,7 @@ class HttpHeadersTest {
     void merge_shouldThrow_whenEmptyRequestHeadersGetForbiddenResponseEntry() {
         final HttpHeaders response = HttpHeaders.fromWire(Map.of("Content-Length", List.of("5")));
 
-        final var headers = HttpHeaders.empty();
+        final HttpHeaders headers = HttpHeaders.empty();
 
         final Throwable thrown = catchThrowable(() -> headers.merge(response));
 

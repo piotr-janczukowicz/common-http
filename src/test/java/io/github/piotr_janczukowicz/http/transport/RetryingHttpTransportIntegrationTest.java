@@ -28,17 +28,17 @@ class RetryingHttpTransportIntegrationTest {
     private static final String USER_PATH = "/user";
 
     @RegisterExtension
-    static final StubHttpServer http = new StubHttpServer();
+    static final StubHttpServer HTTP = new StubHttpServer();
 
     @Test
     void execute_shouldReturnOk_whenRateLimitedThenSucceeds() throws Exception {
-        http.stub(
+        HTTP.stub(
                 GET,
                 USER_PATH,
                 status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"),
                 status(OK).body(new byte[] {1}));
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final RetryingHttpTransport transport = newTransport(unused -> {})) {
@@ -46,14 +46,14 @@ class RetryingHttpTransportIntegrationTest {
         }
 
         assertThat(response.statusCode()).isEqualTo(OK.code());
-        http.verifyRequested(GET, USER_PATH, 2);
+        HTTP.verifyRequested(GET, USER_PATH, 2);
     }
 
     @Test
     void execute_shouldReturnOk_whenCustomDetectorSignalsResetThenSucceeds() throws Exception {
-        http.stub(GET, USER_PATH, status(TOO_MANY_REQUESTS).header(RateLimitDetectors.RESET_HEADER, "0"), status(OK));
+        HTTP.stub(GET, USER_PATH, status(TOO_MANY_REQUESTS).header(RateLimitDetectors.RESET_HEADER, "0"), status(OK));
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final RetryingHttpTransport transport = newTransport(unused -> {})) {
@@ -61,14 +61,14 @@ class RetryingHttpTransportIntegrationTest {
         }
 
         assertThat(response.statusCode()).isEqualTo(OK.code());
-        http.verifyRequested(GET, USER_PATH, 2);
+        HTTP.verifyRequested(GET, USER_PATH, 2);
     }
 
     @Test
     void execute_shouldReturnForbidden_whenResponseIsOrdinaryForbidden() throws Exception {
-        http.stub(GET, USER_PATH, FORBIDDEN.code());
+        HTTP.stub(GET, USER_PATH, FORBIDDEN.code());
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final RetryingHttpTransport transport = newTransport(unused -> {})) {
@@ -76,14 +76,14 @@ class RetryingHttpTransportIntegrationTest {
         }
 
         assertThat(response.statusCode()).isEqualTo(FORBIDDEN.code());
-        http.verifyRequested(GET, USER_PATH);
+        HTTP.verifyRequested(GET, USER_PATH);
     }
 
     @Test
     void execute_shouldReturnOk_whenConnectionResetThenSucceeds() throws Exception {
-        http.stub(GET, USER_PATH, connectionReset(), status(OK));
+        HTTP.stub(GET, USER_PATH, connectionReset(), status(OK));
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final RetryingHttpTransport transport = newTransport(unused -> {})) {
@@ -91,15 +91,15 @@ class RetryingHttpTransportIntegrationTest {
         }
 
         assertThat(response.statusCode()).isEqualTo(OK.code());
-        http.verifyRequested(GET, USER_PATH, 2);
+        HTTP.verifyRequested(GET, USER_PATH, 2);
     }
 
     @Test
     void execute_shouldThrow_whenIoExceptionOnPost() {
-        http.stub(POST, "/repos", connectionReset());
+        HTTP.stub(POST, "/repos", connectionReset());
 
         final HttpRequest request =
-                new HttpRequest(POST, http.uri("/repos"), HttpHeaders.empty(), HttpBody.of(new byte[] {1}));
+                new HttpRequest(POST, HTTP.uri("/repos"), HttpHeaders.empty(), HttpBody.of(new byte[] {1}));
 
         try (final RetryingHttpTransport transport = newTransport(unused -> {})) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -107,12 +107,12 @@ class RetryingHttpTransportIntegrationTest {
             assertThat(thrown).isInstanceOf(IOException.class);
         }
 
-        http.verifyRequested(POST, "/repos");
+        HTTP.verifyRequested(POST, "/repos");
     }
 
     @Test
     void execute_shouldReturnRateLimited_whenAttemptsExhausted() throws Exception {
-        http.stub(
+        HTTP.stub(
                 GET,
                 USER_PATH,
                 status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"),
@@ -120,7 +120,7 @@ class RetryingHttpTransportIntegrationTest {
                 status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"),
                 status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "0"));
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final RetryingHttpTransport transport = newTransport(unused -> {})) {
@@ -128,15 +128,15 @@ class RetryingHttpTransportIntegrationTest {
         }
 
         assertThat(response.statusCode()).isEqualTo(TOO_MANY_REQUESTS.code());
-        http.verifyRequested(GET, USER_PATH, 4);
+        HTTP.verifyRequested(GET, USER_PATH, 4);
     }
 
     @Test
     void execute_shouldSleepForRetryAfter_whenRateLimitedThenSucceeds() throws Exception {
         final AtomicInteger sleptMillis = new AtomicInteger();
-        http.stub(GET, USER_PATH, status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "2"), status(OK));
+        HTTP.stub(GET, USER_PATH, status(TOO_MANY_REQUESTS).header(RETRY_AFTER, "2"), status(OK));
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
 
         final HttpTransport delegate = HttpTransports.okHttp(HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(5))

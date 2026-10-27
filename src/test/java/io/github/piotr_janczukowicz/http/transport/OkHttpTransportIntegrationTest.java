@@ -65,16 +65,16 @@ class OkHttpTransportIntegrationTest {
     private static final int BODY_SIZE = 256 * 1024;
 
     @RegisterExtension
-    static final StubHttpServer http = new StubHttpServer();
+    static final StubHttpServer HTTP = new StubHttpServer();
 
     @TempDir
     Path tempDir;
 
     @Test
     void execute_shouldReturnResponse_whenGetSucceeds() throws Exception {
-        http.stub(GET, USER_PATH, status(OK).header("X-Test", "value").body(new byte[] {42}));
+        HTTP.stub(GET, USER_PATH, status(OK).header("X-Test", "value").body(new byte[] {42}));
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final HttpTransport transport = newTransport()) {
@@ -82,19 +82,19 @@ class OkHttpTransportIntegrationTest {
         }
 
         assertSoftly(softly -> {
-            softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.code());
+            softly.assertThat(response.statusCode()).isEqualTo(OK.code());
             softly.assertThat(response.header("X-Test")).contains("value");
             softly.assertThat(response.body().mapBytes(bytes -> bytes, () -> new byte[0]))
                     .containsExactly(42);
         });
-        http.verifyRequested(GET, USER_PATH);
+        HTTP.verifyRequested(GET, USER_PATH);
     }
 
     @Test
     void execute_shouldReturnAbsentBody_whenResponseHasNoBody() throws Exception {
-        http.stub(GET, USER_PATH, NO_CONTENT.code());
+        HTTP.stub(GET, USER_PATH, NO_CONTENT.code());
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final HttpTransport transport = newTransport()) {
@@ -102,21 +102,21 @@ class OkHttpTransportIntegrationTest {
         }
 
         assertSoftly(softly -> {
-            softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.NO_CONTENT.code());
+            softly.assertThat(response.statusCode()).isEqualTo(NO_CONTENT.code());
             softly.assertThat(response.body().isAbsent()).isTrue();
         });
     }
 
     @Test
     void execute_shouldSendWriteOnce_whenServerAnswers503WithRetryAfterZero() throws Exception {
-        http.stub(
+        HTTP.stub(
                 POST,
                 USER_PATH,
                 status(503).header("Retry-After", "0"),
                 status(CREATED).body(new byte[] {1}));
 
         final HttpRequest request =
-                new HttpRequest(POST, http.uri(USER_PATH), HttpHeaders.empty(), HttpBody.of(new byte[] {7}));
+                new HttpRequest(POST, HTTP.uri(USER_PATH), HttpHeaders.empty(), HttpBody.of(new byte[] {7}));
         final HttpResponse response;
 
         try (final HttpTransport transport = newTransport()) {
@@ -124,26 +124,26 @@ class OkHttpTransportIntegrationTest {
         }
 
         assertThat(response.statusCode()).isEqualTo(503);
-        http.verifyRequested(POST, USER_PATH, 1);
+        HTTP.verifyRequested(POST, USER_PATH, 1);
     }
 
     @Test
     void execute_shouldSendAcceptEncodingGzip_whenCallerOmitsAcceptEncoding() throws Exception {
-        http.stub(GET, USER_PATH, OK.code());
+        HTTP.stub(GET, USER_PATH, OK.code());
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = newTransport()) {
             transport.execute(request);
         }
 
-        http.verifyHeader(GET, USER_PATH, "Accept-Encoding", "gzip");
+        HTTP.verifyHeader(GET, USER_PATH, "Accept-Encoding", "gzip");
     }
 
     @Test
     void execute_shouldDecompressGzipBody_whenContentEncodingIsGzip() throws Exception {
         final byte[] plain = "hello-example".getBytes(StandardCharsets.UTF_8);
-        http.stub(
+        HTTP.stub(
                 GET,
                 USER_PATH,
                 status(OK)
@@ -151,7 +151,7 @@ class OkHttpTransportIntegrationTest {
                         .header("X-Test", "value")
                         .body(gzip(plain)));
 
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final HttpTransport transport = newTransport()) {
@@ -169,8 +169,8 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldThrowResponseTooLarge_whenBodyExceedsLimit() {
-        http.stub(GET, "/big", status(OK).body(new byte[64]));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/big"), HttpHeaders.empty(), null);
+        HTTP.stub(GET, "/big", status(OK).body(new byte[64]));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/big"), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = limitedTransport(63)) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -181,8 +181,8 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldReturnBody_whenBodyEqualsLimit() throws Exception {
-        http.stub(GET, "/exact", status(OK).body(new byte[64]));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/exact"), HttpHeaders.empty(), null);
+        HTTP.stub(GET, "/exact", status(OK).body(new byte[64]));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/exact"), HttpHeaders.empty(), null);
 
         final HttpResponse response;
         try (final HttpTransport transport = limitedTransport(64)) {
@@ -195,8 +195,8 @@ class OkHttpTransportIntegrationTest {
     @Test
     void execute_shouldLimitInflatedSize_whenGzipBodyExpandsPastLimit() throws Exception {
         final byte[] compressed = gzip(new byte[100_000]);
-        http.stub(GET, "/bomb", status(OK).header("Content-Encoding", "gzip").body(compressed));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/bomb"), HttpHeaders.empty(), null);
+        HTTP.stub(GET, "/bomb", status(OK).header("Content-Encoding", "gzip").body(compressed));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/bomb"), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = limitedTransport(10_000)) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -208,11 +208,11 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldSendRequestHeaders_whenHeadersPresent() throws Exception {
-        http.stub(POST, "/repos", CREATED.code());
+        HTTP.stub(POST, "/repos", CREATED.code());
 
         final HttpRequest request = new HttpRequest(
                 POST,
-                http.uri("/repos"),
+                HTTP.uri("/repos"),
                 Map.of("Content-Type", "application/json"),
                 HttpBody.of("{}".getBytes(StandardCharsets.UTF_8)));
 
@@ -220,68 +220,68 @@ class OkHttpTransportIntegrationTest {
             transport.execute(request);
         }
 
-        http.verifyHeader(POST, "/repos", "Content-Type", "application/json");
+        HTTP.verifyHeader(POST, "/repos", "Content-Type", "application/json");
     }
 
     @Test
     void execute_shouldSendEmptyBody_whenPostHasNoPayload() throws Exception {
-        http.stub(POST, "/repos", CREATED.code());
+        HTTP.stub(POST, "/repos", CREATED.code());
 
-        final HttpRequest request = new HttpRequest(POST, http.uri("/repos"), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(POST, HTTP.uri("/repos"), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = newTransport()) {
             transport.execute(request);
         }
 
-        http.verifyRequested(POST, "/repos");
+        HTTP.verifyRequested(POST, "/repos");
     }
 
     @Test
     void execute_shouldSendEmptyBody_whenPutOrPatchHasNoPayload() throws Exception {
-        http.stub(HttpMethod.PUT, "/repos", CREATED.code());
-        http.stub(HttpMethod.PATCH, "/repos", OK.code());
+        HTTP.stub(HttpMethod.PUT, "/repos", CREATED.code());
+        HTTP.stub(PATCH, "/repos", OK.code());
 
         try (final HttpTransport transport = newTransport()) {
-            transport.execute(new HttpRequest(HttpMethod.PUT, http.uri("/repos"), HttpHeaders.empty(), null));
-            transport.execute(new HttpRequest(HttpMethod.PATCH, http.uri("/repos"), HttpHeaders.empty(), null));
+            transport.execute(new HttpRequest(HttpMethod.PUT, HTTP.uri("/repos"), HttpHeaders.empty(), null));
+            transport.execute(new HttpRequest(PATCH, HTTP.uri("/repos"), HttpHeaders.empty(), null));
         }
 
-        http.verifyRequested(HttpMethod.PUT, "/repos");
-        http.verifyRequested(HttpMethod.PATCH, "/repos");
+        HTTP.verifyRequested(HttpMethod.PUT, "/repos");
+        HTTP.verifyRequested(PATCH, "/repos");
     }
 
     @Test
     void execute_shouldSendTrimmedHeaderValue_whenValueHasSurroundingWhitespace() throws Exception {
-        http.stub(GET, USER_PATH, status(OK));
+        HTTP.stub(GET, USER_PATH, status(OK));
         final HttpRequest request =
-                new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.of("X-Test", " 	 padded value 	 "), null);
+                new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.of("X-Test", " 	 padded value 	 "), null);
 
         try (final HttpTransport transport = newTransport()) {
             transport.execute(request);
         }
 
-        http.verifyHeader(GET, USER_PATH, "X-Test", "padded value");
+        HTTP.verifyHeader(GET, USER_PATH, "X-Test", "padded value");
     }
 
     @Test
     void execute_shouldSendCallerHostHeader_whenHostSet() throws Exception {
-        http.stub(GET, USER_PATH, status(OK));
+        HTTP.stub(GET, USER_PATH, status(OK));
         final HttpRequest request = new HttpRequest(
-                GET, http.uri(USER_PATH), HttpHeaders.of("Host", "virtual.example.test", "Connection", "close"), null);
+                GET, HTTP.uri(USER_PATH), HttpHeaders.of("Host", "virtual.example.test", "Connection", "close"), null);
 
         try (final HttpTransport transport = newTransport()) {
             transport.execute(request);
         }
 
-        http.verifyHeader(GET, USER_PATH, "Host", "virtual.example.test");
+        HTTP.verifyHeader(GET, USER_PATH, "Host", "virtual.example.test");
     }
 
     @Test
     void execute_shouldSendBody_whenExpectContinueSet() throws Exception {
-        http.stub(POST, "/repos", CREATED.code());
+        HTTP.stub(POST, "/repos", CREATED.code());
         final HttpRequest request = new HttpRequest(
                 POST,
-                http.uri("/repos"),
+                HTTP.uri("/repos"),
                 HttpHeaders.of("Expect", "100-continue"),
                 HttpBody.of("payload".getBytes(StandardCharsets.UTF_8)));
 
@@ -291,15 +291,15 @@ class OkHttpTransportIntegrationTest {
         }
 
         assertThat(response.statusCode()).isEqualTo(CREATED.code());
-        http.verifyBody(POST, "/repos", "payload");
+        HTTP.verifyBody(POST, "/repos", "payload");
     }
 
     @Test
     void execute_shouldSendBody_whenDeleteHasBody() throws Exception {
-        http.stub(DELETE, USER_PATH, status(OK));
+        HTTP.stub(DELETE, USER_PATH, status(OK));
         final HttpRequest request = new HttpRequest(
                 DELETE,
-                http.uri(USER_PATH),
+                HTTP.uri(USER_PATH),
                 HttpHeaders.empty(),
                 HttpBody.of("payload".getBytes(StandardCharsets.UTF_8)));
 
@@ -307,32 +307,32 @@ class OkHttpTransportIntegrationTest {
             transport.execute(request);
         }
 
-        http.verifyBody(DELETE, USER_PATH, "payload");
+        HTTP.verifyBody(DELETE, USER_PATH, "payload");
     }
 
     @Test
     void execute_shouldReturnRedirect_whenTransportDoesNotFollow() throws Exception {
-        http.stubRedirect("/start", http.uri("/target").toString(), FOUND.code());
+        HTTP.stubRedirect("/start", HTTP.uri("/target").toString(), FOUND.code());
 
-        final HttpRequest request = new HttpRequest(GET, http.uri("/start"), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/start"), HttpHeaders.empty(), null);
         final HttpResponse response;
 
         try (final HttpTransport transport = newTransport()) {
             response = transport.execute(request);
         }
 
-        assertThat(response.statusCode()).isEqualTo(HttpStatus.FOUND.code());
-        http.verifyRequested(GET, "/start");
+        assertThat(response.statusCode()).isEqualTo(FOUND.code());
+        HTTP.verifyRequested(GET, "/start");
     }
 
     @Test
     void execute_shouldThrow_whenResponseHeadersAreSlow() {
-        http.stub(GET, "/slow", status(OK).delay(Duration.ofSeconds(5)));
+        HTTP.stub(GET, "/slow", status(OK).delay(Duration.ofSeconds(5)));
 
         final HttpTransportConfiguration configuration = HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofMillis(300))
                 .build();
-        final HttpRequest request = new HttpRequest(GET, http.uri("/slow"), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/slow"), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = HttpTransports.okHttp(configuration)) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -343,7 +343,7 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldSucceed_whenChunkedBodyIsSlowUnderTimeout() throws Exception {
-        http.stub(
+        HTTP.stub(
                 GET,
                 "/chunked",
                 status(OK).body(new byte[] {1, 2, 3, 4}).chunkedDribbleDelay(4, Duration.ofSeconds(1)));
@@ -351,7 +351,7 @@ class OkHttpTransportIntegrationTest {
         final HttpTransportConfiguration configuration = HttpTransportConfiguration.builder()
                 .responseTimeout(Duration.ofSeconds(5))
                 .build();
-        final HttpRequest request = new HttpRequest(GET, http.uri("/chunked"), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/chunked"), HttpHeaders.empty(), null);
 
         final HttpResponse response;
         try (final HttpTransport transport = HttpTransports.okHttp(configuration)) {
@@ -369,7 +369,7 @@ class OkHttpTransportIntegrationTest {
 
         try (final StallAfterHeadersServer stall = new StallAfterHeadersServer(Duration.ofSeconds(60));
                 final HttpTransport transport = HttpTransports.okHttp(configuration)) {
-            final var request = new HttpRequest(GET, stall.uri(), HttpHeaders.empty(), null);
+            final HttpRequest request = new HttpRequest(GET, stall.uri(), HttpHeaders.empty(), null);
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -396,7 +396,7 @@ class OkHttpTransportIntegrationTest {
         try (final DropMidRequestServer server = new DropMidRequestServer();
                 final HttpTransport transport = newTransport()) {
             transport.execute(new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null));
-            final var request = new HttpRequest(method, server.uri(), HttpHeaders.empty(), body);
+            final HttpRequest request = new HttpRequest(method, server.uri(), HttpHeaders.empty(), body);
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -406,16 +406,16 @@ class OkHttpTransportIntegrationTest {
     }
 
     private HttpRequest slowRequest() {
-        return new HttpRequest(GET, http.uri("/slow"), HttpHeaders.empty(), null);
+        return new HttpRequest(GET, HTTP.uri("/slow"), HttpHeaders.empty(), null);
     }
 
     private void assertInFlightCallReportsClosed(final ThrowingConsumer<HttpTransport> call) throws Exception {
-        http.stub(GET, "/slow", status(OK).delay(Duration.ofSeconds(10)));
+        HTTP.stub(GET, "/slow", status(OK).delay(Duration.ofSeconds(10)));
         final HttpTransport transport = newTransport();
         final AtomicReference<Throwable> thrown = new AtomicReference<>();
         final Thread caller = new Thread(() -> thrown.set(catchThrowable(() -> call.accept(transport))));
         caller.start();
-        http.awaitRequested(GET, "/slow", Duration.ofSeconds(5));
+        HTTP.awaitRequested(GET, "/slow", Duration.ofSeconds(5));
 
         transport.close();
         final boolean finished = caller.join(Duration.ofSeconds(5));
@@ -479,12 +479,12 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldThrowTimeout_whenSlowDrippedBodyExceedsCallTimeout() {
-        http.stub(
+        HTTP.stub(
                 GET,
                 "/dribble",
                 status(OK).body(new byte[] {1, 2, 3, 4}).chunkedDribbleDelay(4, Duration.ofSeconds(3)));
         final HttpTransportConfiguration configuration = callTimeoutConfiguration(Duration.ofMillis(500));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/dribble"), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/dribble"), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = HttpTransports.okHttp(configuration)) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -495,11 +495,11 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldApplyCallTimeout_whenClientWrapped() {
-        http.stub(
+        HTTP.stub(
                 GET,
                 "/dribble",
                 status(OK).body(new byte[] {1, 2, 3, 4}).chunkedDribbleDelay(4, Duration.ofSeconds(3)));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/dribble"), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/dribble"), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = HttpTransports.okHttp(callTimeoutConfiguration(Duration.ofMillis(500)))) {
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
@@ -510,11 +510,11 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldSucceed_whenNoCallTimeoutAndBodyDripsSlowly() throws Exception {
-        http.stub(
+        HTTP.stub(
                 GET,
                 "/dribble",
                 status(OK).body(new byte[] {1, 2, 3, 4}).chunkedDribbleDelay(4, Duration.ofSeconds(1)));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/dribble"), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/dribble"), HttpHeaders.empty(), null);
 
         final HttpResponse response;
         try (final HttpTransport transport = newTransport()) {
@@ -526,11 +526,11 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldNotRetryCallTimeout_whenWrappedInRetryingTransport() {
-        http.stub(
+        HTTP.stub(
                 GET,
                 "/dribble",
                 status(OK).body(new byte[] {1, 2, 3, 4}).chunkedDribbleDelay(4, Duration.ofSeconds(3)));
-        final HttpRequest request = new HttpRequest(GET, http.uri("/dribble"), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri("/dribble"), HttpHeaders.empty(), null);
 
         try (final RetryingHttpTransport transport = new RetryingHttpTransport(
                 HttpTransports.okHttp(callTimeoutConfiguration(Duration.ofMillis(500))),
@@ -539,14 +539,14 @@ class OkHttpTransportIntegrationTest {
 
             assertThat(thrown).isInstanceOf(InterruptedIOException.class).hasMessage("timeout");
         }
-        http.verifyRequested(GET, "/dribble", 1);
+        HTTP.verifyRequested(GET, "/dribble", 1);
     }
 
     @Test
     void execute_shouldFailFast_whenContentLengthExceedsLimit() throws Exception {
         try (final LargeContentLengthServer server = new LargeContentLengthServer();
                 final HttpTransport transport = limitedTransport(1024)) {
-            final var request = new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null);
+            final HttpRequest request = new HttpRequest(GET, server.uri(), HttpHeaders.empty(), null);
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -556,8 +556,8 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldReturnHeaders_whenHeadAnnouncesLargeContentLength() throws Exception {
-        http.stub(HttpMethod.HEAD, "/big", status(OK).header("Content-Length", "1000000"));
-        final HttpRequest request = new HttpRequest(HttpMethod.HEAD, http.uri("/big"), HttpHeaders.empty(), null);
+        HTTP.stub(HttpMethod.HEAD, "/big", status(OK).header("Content-Length", "1000000"));
+        final HttpRequest request = new HttpRequest(HttpMethod.HEAD, HTTP.uri("/big"), HttpHeaders.empty(), null);
 
         final HttpResponse response;
         try (final HttpTransport transport = limitedTransport(1024)) {
@@ -573,15 +573,15 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldFailWithNonRetryableException_whenTransportClosed() {
-        http.stub(GET, USER_PATH, OK.code());
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        HTTP.stub(GET, USER_PATH, OK.code());
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpTransport transport = newTransport();
         transport.close();
 
         final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
         assertThat(thrown).isInstanceOf(NonRetryableIOException.class).hasMessage("transport closed");
-        http.verifyRequested(GET, USER_PATH, 0);
+        HTTP.verifyRequested(GET, USER_PATH, 0);
     }
 
     @Test
@@ -606,7 +606,7 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void execute_shouldThrowNonRetryable_whenStreamSourceFails() {
-        http.stub(POST, "/upload", OK.code());
+        HTTP.stub(POST, "/upload", OK.code());
         final HttpBody body = HttpBody.ofStream(
                 () -> new InputStream() {
                     @Override
@@ -617,7 +617,7 @@ class OkHttpTransportIntegrationTest {
                 4);
 
         try (final HttpTransport transport = newTransport()) {
-            final var request = new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body);
+            final HttpRequest request = new HttpRequest(POST, HTTP.uri("/upload"), HttpHeaders.empty(), body);
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -631,11 +631,11 @@ class OkHttpTransportIntegrationTest {
     @ParameterizedTest
     @ValueSource(ints = {8, 2})
     void execute_shouldThrowNonRetryable_whenStreamLengthDiffersFromAnnounced(final int actualLength) {
-        http.stub(POST, "/upload", OK.code());
+        HTTP.stub(POST, "/upload", OK.code());
         final HttpBody body = HttpBody.ofStream(() -> new ByteArrayInputStream(new byte[actualLength]), 4);
 
         try (final HttpTransport transport = newTransport()) {
-            final var request = new HttpRequest(POST, http.uri("/upload"), HttpHeaders.empty(), body);
+            final HttpRequest request = new HttpRequest(POST, HTTP.uri("/upload"), HttpHeaders.empty(), body);
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -647,13 +647,13 @@ class OkHttpTransportIntegrationTest {
     void stream_shouldNotBufferOrLimitBody_whenResponseIsSuccessful() throws Exception {
         final byte[] payload = new byte[BODY_SIZE];
         Arrays.fill(payload, (byte) 7);
-        http.stub(GET, USER_PATH, status(OK).header("X-Test", "value").body(payload));
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        HTTP.stub(GET, USER_PATH, status(OK).header("X-Test", "value").body(payload));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = limitedTransport(16);
                 final HttpStreamResponse response = transport.stream(request)) {
             assertSoftly(softly -> {
-                softly.assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.code());
+                softly.assertThat(response.statusCode()).isEqualTo(OK.code());
                 softly.assertThat(response.isStreaming()).isTrue();
                 softly.assertThat(response.header("X-Test")).contains("value");
             });
@@ -663,8 +663,8 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void stream_shouldBufferBody_whenResponseIsNotSuccessful() throws Exception {
-        http.stub(GET, USER_PATH, status(HttpStatus.NOT_FOUND).body(new byte[] {1, 2, 3}));
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        HTTP.stub(GET, USER_PATH, status(HttpStatus.NOT_FOUND).body(new byte[] {1, 2, 3}));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = newTransport();
                 final HttpStreamResponse response = transport.stream(request)) {
@@ -679,8 +679,8 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void stream_shouldThrowResponseTooLarge_whenErrorBodyExceedsLimit() {
-        http.stub(GET, USER_PATH, status(HttpStatus.NOT_FOUND).body(new byte[64]));
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        HTTP.stub(GET, USER_PATH, status(HttpStatus.NOT_FOUND).body(new byte[64]));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
 
         try (final HttpTransport transport = limitedTransport(16)) {
             final Throwable thrown = catchThrowable(() -> transport.stream(request));
@@ -691,7 +691,7 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void stream_shouldFailWithNonRetryableIOException_whenTransportIsClosed() {
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpTransport transport = newTransport();
         transport.close();
 
@@ -732,13 +732,13 @@ class OkHttpTransportIntegrationTest {
     void close_shouldFailRead_whenStreamedBodyStillOpen() throws Exception {
         final byte[] payload = new byte[BODY_SIZE * 8];
         Arrays.fill(payload, (byte) 7);
-        http.stub(GET, USER_PATH, status(OK).body(payload));
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        HTTP.stub(GET, USER_PATH, status(OK).body(payload));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpTransport transport = newTransport();
         final HttpStreamResponse response = transport.stream(request);
 
         transport.close();
-        final var bodyValue = response.body();
+        final InputStream bodyValue = response.body();
 
         final Throwable thrown = catchThrowable(bodyValue::readAllBytes);
 
@@ -747,8 +747,8 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void close_shouldAllowClosingStreamedBody_whenTransportAlreadyClosed() throws Exception {
-        http.stub(GET, USER_PATH, status(OK).body(new byte[] {1, 2, 3}));
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        HTTP.stub(GET, USER_PATH, status(OK).body(new byte[] {1, 2, 3}));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final HttpTransport transport = newTransport();
         final HttpStreamResponse response = transport.stream(request);
         transport.close();
@@ -760,8 +760,8 @@ class OkHttpTransportIntegrationTest {
 
     @Test
     void close_shouldLeaveNoConnections_whenCallsRaceWithClose() throws Exception {
-        http.stub(GET, USER_PATH, status(OK).body(new byte[] {1}));
-        final HttpRequest request = new HttpRequest(GET, http.uri(USER_PATH), HttpHeaders.empty(), null);
+        HTTP.stub(GET, USER_PATH, status(OK).body(new byte[] {1}));
+        final HttpRequest request = new HttpRequest(GET, HTTP.uri(USER_PATH), HttpHeaders.empty(), null);
         final List<Integer> leftover = new ArrayList<>();
 
         for (int round = 0; round < 20; round++) {

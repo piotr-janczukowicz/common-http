@@ -17,6 +17,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -43,13 +44,13 @@ class HttpDownloadsTest {
     void toFile_shouldThrowAndKeepDirectory_whenTargetIsAnEmptyDirectory() throws IOException {
         final Path target = Files.createDirectory(tempDir.resolve("out"));
 
-        final var stream = new ByteArrayInputStream(new byte[] {1});
+        final ByteArrayInputStream stream = new ByteArrayInputStream(new byte[] {1});
 
         final Throwable thrown = catchThrowable(() -> HttpDownloads.toFile(stream, target));
 
         assertThat(thrown).isInstanceOf(FileAlreadyExistsException.class).hasMessageContaining("target is a directory");
         assertThat(target).isDirectory();
-        try (var files = Files.list(tempDir)) {
+        try (Stream<Path> files = Files.list(tempDir)) {
             assertThat(files).containsExactly(target);
         }
     }
@@ -69,7 +70,7 @@ class HttpDownloadsTest {
 
         assertThat(thrown).isInstanceOf(IOException.class).hasMessage("boom");
         assertThat(Files.readAllBytes(target)).containsExactly(9);
-        try (var files = Files.list(tempDir)) {
+        try (Stream<Path> files = Files.list(tempDir)) {
             assertThat(files).containsExactly(target);
         }
     }
@@ -85,7 +86,7 @@ class HttpDownloadsTest {
 
         assertThat(thrown).isInstanceOf(IOException.class).hasMessage("connection lost");
         assertThat(Files.readAllBytes(target)).containsExactly(9);
-        try (var files = Files.list(tempDir)) {
+        try (Stream<Path> files = Files.list(tempDir)) {
             assertThat(files).containsExactly(target);
         }
     }
@@ -101,7 +102,7 @@ class HttpDownloadsTest {
             throw moveFailure;
         };
 
-        final var stream = new ByteArrayInputStream(new byte[] {1});
+        final ByteArrayInputStream stream = new ByteArrayInputStream(new byte[] {1});
 
         final Throwable thrown =
                 catchThrowable(() -> HttpDownloads.toFile(stream, target, nonEmptyDirectoryInPlaceOfTemporaryFile));
@@ -123,7 +124,7 @@ class HttpDownloadsTest {
 
         assertThat(result).isEqualTo(target);
         assertThat(Files.readAllBytes(target)).containsExactly(1, 2);
-        try (var files = Files.list(tempDir)) {
+        try (Stream<Path> files = Files.list(tempDir)) {
             assertThat(files).containsExactly(target);
         }
     }
@@ -164,7 +165,7 @@ class HttpDownloadsTest {
     void toFile_shouldThrow_whenTargetIsFileSystemRoot() {
         final Path root = tempDir.toAbsolutePath().getRoot();
 
-        final var nullInputStream = InputStream.nullInputStream();
+        final InputStream nullInputStream = InputStream.nullInputStream();
 
         final Throwable thrown = catchThrowable(() -> HttpDownloads.toFile(nullInputStream, root));
 

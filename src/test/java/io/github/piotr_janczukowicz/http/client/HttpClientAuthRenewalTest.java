@@ -68,7 +68,7 @@ class HttpClientAuthRenewalTest {
         when(transport.execute(any())).thenReturn(unauthorized());
 
         try (HttpClient client = client(true)) {
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -83,7 +83,7 @@ class HttpClientAuthRenewalTest {
         when(transport.execute(any())).thenReturn(unauthorized());
 
         try (HttpClient client = client(false)) {
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -104,7 +104,7 @@ class HttpClientAuthRenewalTest {
                 .thenReturn(unauthorized());
 
         try (HttpClient client = client(true)) {
-            final var call = HttpCall.get("/file");
+            final HttpCall call = HttpCall.get("/file");
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -185,7 +185,7 @@ class HttpClientAuthRenewalTest {
                 .thenReturn(new HttpResponse(HttpStatus.FORBIDDEN.code(), HttpHeaders.empty(), HttpBody.absent()));
 
         try (HttpClient client = client(true)) {
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -276,7 +276,7 @@ class HttpClientAuthRenewalTest {
                         transport, HttpClientConfiguration.builder(BASE).build())
                 .auth(failing)
                 .build()) {
-            final var call = HttpCall.get("/zip");
+            final HttpCall call = HttpCall.get("/zip");
 
             final Throwable thrown = catchThrowable(() -> client.stream(call, HttpStreamResponse::statusCode));
 
@@ -331,7 +331,7 @@ class HttpClientAuthRenewalTest {
                         transport, HttpClientConfiguration.builder(BASE).build())
                 .auth(auth)
                 .build()) {
-            final var call = HttpCall.get("/user");
+            final HttpCall call = HttpCall.get("/user");
 
             thrown = catchThrowable(() -> client.execute(call));
         }
@@ -372,7 +372,7 @@ class HttpClientAuthRenewalTest {
         when(transport.execute(any())).thenReturn(unauthorized());
         final HttpClient client = failingRenewalClient();
 
-        final var call = HttpCall.get("/user");
+        final HttpCall call = HttpCall.get("/user");
 
         final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -388,7 +388,7 @@ class HttpClientAuthRenewalTest {
         when(transport.stream(any())).thenReturn(HttpStreamResponse.buffered(unauthorized()));
         final HttpClient client = failingRenewalClient();
 
-        final var call = HttpCall.get("/zip");
+        final HttpCall call = HttpCall.get("/zip");
 
         final Throwable thrown = catchThrowable(() -> client.stream(call, HttpStreamResponse::statusCode));
 

@@ -41,9 +41,9 @@ class OkHttpTransportTest {
 
     @Test
     void request_shouldThrow_whenUriIsNotHttp() {
-        final var uri = URI.create("mailto:dev@example.com");
-        final var headers = HttpHeaders.empty();
-        final var absent = HttpBody.absent();
+        final URI uri = URI.create("mailto:dev@example.com");
+        final HttpHeaders headers = HttpHeaders.empty();
+        final HttpBody absent = HttpBody.absent();
 
         final Throwable thrown = catchThrowable(() -> new HttpRequest(HttpMethod.GET, uri, headers, absent));
 
@@ -188,7 +188,8 @@ class OkHttpTransportTest {
     @Test
     void execute_shouldThrowResponseTooLarge_whenGetAnnouncesLargerContentLength() {
         try (final HttpTransport transport = announcingTransport(200)) {
-            final var request = new HttpRequest(HttpMethod.GET, API_URI, HttpHeaders.empty(), HttpBody.absent());
+            final HttpRequest request =
+                    new HttpRequest(HttpMethod.GET, API_URI, HttpHeaders.empty(), HttpBody.absent());
 
             final Throwable thrown = catchThrowable(() -> transport.execute(request));
 
@@ -326,7 +327,8 @@ class OkHttpTransportTest {
 
         final Throwable thrown;
         try (final HttpTransport transport = wrap(client, HttpTransportConfiguration.defaults())) {
-            final var requestValue = new HttpRequest(HttpMethod.GET, API_URI, HttpHeaders.empty(), HttpBody.absent());
+            final HttpRequest requestValue =
+                    new HttpRequest(HttpMethod.GET, API_URI, HttpHeaders.empty(), HttpBody.absent());
 
             thrown = catchThrowable(() -> transport.stream(requestValue));
         }

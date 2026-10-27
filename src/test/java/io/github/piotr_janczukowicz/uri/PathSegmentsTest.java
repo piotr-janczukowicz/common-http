@@ -112,7 +112,7 @@ class PathSegmentsTest {
 
     @Test
     void append_shouldThrow_whenValueTypeUnsupported() {
-        final var uri = URI.create("https://example.test");
+        final URI uri = URI.create("https://example.test");
 
         final Throwable thrown = catchThrowable(() -> appended("username", false, uri));
 

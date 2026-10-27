@@ -35,18 +35,18 @@ class HttpClientTransportIntegrationTest {
     private static final long SMALL_LIMIT = 16;
 
     @RegisterExtension
-    static final StubHttpServer api = new StubHttpServer("127.0.0.1");
+    static final StubHttpServer API = new StubHttpServer("127.0.0.1");
 
     @RegisterExtension
-    static final StubHttpServer other = new StubHttpServer("localhost");
+    static final StubHttpServer OTHER = new StubHttpServer("localhost");
 
     @Test
     void execute_shouldApplyTransportConfiguration_whenTransportBuiltFromIt() {
-        api.stub(GET, USER_PATH, status(OK).body(new byte[64]));
+        API.stub(GET, USER_PATH, status(OK).body(new byte[64]));
 
         final Throwable thrown;
         try (final HttpClient client = client(limitedTransport())) {
-            final var call = HttpCall.get(USER_PATH);
+            final HttpCall call = HttpCall.get(USER_PATH);
 
             thrown = catchThrowable(() -> client.execute(call));
         }
@@ -56,23 +56,23 @@ class HttpClientTransportIntegrationTest {
 
     @Test
     void execute_shouldNotRetry_whenParentClosedBeforeCall() {
-        api.stub(GET, USER_PATH, status(OK));
+        API.stub(GET, USER_PATH, status(OK));
         final HttpClient client = client(newTransport());
         client.close();
         client.close();
 
-        final var call = HttpCall.get(USER_PATH);
+        final HttpCall call = HttpCall.get(USER_PATH);
 
         final Throwable thrown = catchThrowable(() -> client.execute(call));
 
         assertThat(thrown).isInstanceOf(NonRetryableIOException.class);
-        api.verifyRequested(GET, USER_PATH, 0);
+        API.verifyRequested(GET, USER_PATH, 0);
     }
 
     @Test
     void execute_shouldDropQueryFromExceptionUri_whenCrossOriginRedirectEndsInError() {
-        other.stub(GET, "/target", status(NOT_FOUND));
-        api.stub(GET, "/start", status(FOUND.code()).header(LOCATION, other.uri("/target") + "?sig=secret"));
+        OTHER.stub(GET, "/target", status(NOT_FOUND));
+        API.stub(GET, "/start", status(FOUND.code()).header(LOCATION, OTHER.uri("/target") + "?sig=secret"));
 
         final HttpException thrown;
         try (final HttpClient client = client(newTransport())) {
@@ -80,14 +80,14 @@ class HttpClientTransportIntegrationTest {
             thrown = (HttpException) catchThrowable(() -> client.execute(call));
         }
 
-        assertThat(thrown.uri()).contains(other.uri("/target"));
+        assertThat(thrown.uri()).contains(OTHER.uri("/target"));
         assertThat(thrown.uri().orElseThrow().getRawQuery()).isNull();
     }
 
     @Test
     void execute_shouldKeepQueryInExceptionUri_whenRedirectStaysOnOrigin() {
-        api.stub(GET, "/end", status(NOT_FOUND));
-        api.stub(GET, "/begin", status(FOUND.code()).header(LOCATION, api.uri("/end") + "?page=2"));
+        API.stub(GET, "/end", status(NOT_FOUND));
+        API.stub(GET, "/begin", status(FOUND.code()).header(LOCATION, API.uri("/end") + "?page=2"));
 
         final HttpException thrown;
         try (final HttpClient client = client(newTransport())) {
@@ -101,7 +101,8 @@ class HttpClientTransportIntegrationTest {
     @Test
     void execute_shouldNotLeakQuery_whenRequestIsOutsideBaseUri() {
         try (final HttpClient client = client(newTransport())) {
-            final var call = HttpCall.get(URI.create("https://user:pw@elsewhere.example.test/x?token=secret#frag"));
+            final HttpCall call =
+                    HttpCall.get(URI.create("https://user:pw@elsewhere.example.test/x?token=secret#frag"));
 
             final Throwable thrown = catchThrowable(() -> client.execute(call));
 
@@ -112,7 +113,7 @@ class HttpClientTransportIntegrationTest {
     }
 
     private static HttpClientConfiguration config() {
-        return HttpClientConfiguration.of(URI.create(api.baseUri() + "/"));
+        return HttpClientConfiguration.of(URI.create(API.baseUri() + "/"));
     }
 
     private static HttpTransport limitedTransport() {
@@ -135,11 +136,11 @@ class HttpClientTransportIntegrationTest {
     @ValueSource(ints = {307, 308})
     void execute_shouldReopenStreamBodyForRedirectHop_whenKeepMethodRedirect(final int status) throws Exception {
         final byte[] payload = {1, 2, 3, 4};
-        api.stub(
+        API.stub(
                 HttpMethod.POST,
                 "/start",
-                status(status).header(LOCATION, api.uri("/target").toString()));
-        api.stub(HttpMethod.POST, "/target", status(OK));
+                status(status).header(LOCATION, API.uri("/target").toString()));
+        API.stub(HttpMethod.POST, "/target", status(OK));
         final AtomicInteger opened = new AtomicInteger();
         final HttpBody body = HttpBody.ofStream(
                 () -> {
@@ -157,6 +158,6 @@ class HttpClientTransportIntegrationTest {
         }
 
         assertThat(opened).hasValue(2);
-        api.verifyBody(HttpMethod.POST, "/target", payload);
+        API.verifyBody(HttpMethod.POST, "/target", payload);
     }
 }

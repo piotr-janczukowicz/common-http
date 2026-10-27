@@ -453,7 +453,7 @@ class RetryingHttpTransportTest {
 
     @Test
     void constructor_shouldThrow_whenSleeperIsNull() {
-        final var config = RetryConfiguration.defaults();
+        final RetryConfiguration config = RetryConfiguration.defaults();
 
         final Throwable thrown = catchThrowable(() -> new RetryingHttpTransport(delegate, config, null));
 

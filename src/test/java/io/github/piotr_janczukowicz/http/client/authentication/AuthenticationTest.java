@@ -1,6 +1,5 @@
 package io.github.piotr_janczukowicz.http.client.authentication;
 
-import static io.github.piotr_janczukowicz.http.HttpHeaderNames.AUTHORIZATION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
@@ -173,7 +172,7 @@ class AuthenticationTest {
     @Test
     void scheme_shouldMatchConstants_whenTypesListed() {
         assertSoftly(softly -> {
-            softly.assertThat(HttpHeaderNames.AUTHORIZATION).isEqualTo(AUTHORIZATION);
+            softly.assertThat(HttpHeaderNames.AUTHORIZATION).isEqualTo("Authorization");
             softly.assertThat(Type.BASIC.scheme()).isEqualTo(Authentication.BASIC);
             softly.assertThat(Type.BEARER.scheme()).isEqualTo(Authentication.BEARER);
         });
