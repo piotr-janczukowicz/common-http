@@ -65,6 +65,39 @@
     </dependency>
   </dependencies>
 
+  <profiles>
+    <profile>
+      <!-- Opt-in: runs PMD with every rule enabled on test sources. Activate with -Ppmd-test. -->
+      <id>pmd-test</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-pmd-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>pmd-test</id>
+                <phase>process-test-classes</phase>
+                <goals>
+                  <goal>check</goal>
+                </goals>
+                <configuration>
+                  <includeTests>true</includeTests>
+                  <rulesets combine.self="override">
+                    <ruleset>${project.basedir}/pmd/pmd-test-ruleset.xml</ruleset>
+                  </rulesets>
+                  <compileSourceRoots>
+                    <compileSourceRoot>${project.basedir}/src/test/java</compileSourceRoot>
+                  </compileSourceRoots>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
   <build>
     <plugins>
       <plugin>
