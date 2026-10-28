@@ -15,7 +15,8 @@ jobs:
     timeout-minutes: 15
     permissions:
       security-events: write
-      id-token: write
+      # OIDC permission that lets Scorecard publish its result; it holds no token value.
+      id-token: write # nosemgrep
       contents: read
       actions: read
     steps:
