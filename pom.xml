@@ -10,7 +10,7 @@
   </parent>
 
   <artifactId>common-http</artifactId>
-  <version>4-SNAPSHOT</version>
+  <version>6-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>common-http</name>
