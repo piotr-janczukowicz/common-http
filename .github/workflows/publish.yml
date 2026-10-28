@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   publish:
-    uses: piotr-janczukowicz/common-parent/.github/workflows/publish.yml@main
+    uses: piotr-janczukowicz/common-parent/.github/workflows/publish.yml@3ebfea92670176284fedb9fb62060a0088f092e8 # v10
     with:
       tag: ${{ inputs.tag }}
     secrets: inherit
