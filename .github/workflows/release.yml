@@ -7,8 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 concurrency:
   group: release
@@ -16,6 +15,9 @@ concurrency:
 
 jobs:
   release:
+    permissions:
+      contents: write
+      packages: write
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
