@@ -18,7 +18,7 @@
   <url>https://github.com/piotr-janczukowicz/common-http</url>
 
   <properties>
-    <common-util.version>7</common-util.version>
+    <common-util.version>8</common-util.version>
     <common-json.version>5</common-json.version>
     <common-test-support.version>3</common-test-support.version>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.http=jdk.httpserver</test.module.args>
