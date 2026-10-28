@@ -2,7 +2,8 @@ name: Release
 
 # Run by hand on main. Deploys the next integer version to GitHub Packages, tags it and creates the GitHub release. The
 # version is the newest vN tag plus one (or the N-SNAPSHOT of the pom when that is higher); nothing is pushed to main,
-# so branch protection stays on. Publishing to Maven Central is a separate workflow that takes the tag.
+# so branch protection stays on: the next N-SNAPSHOT version goes into a pull request that is merged by hand. It is a
+# separate job, so "Re-run failed jobs" retries it without touching the tag. Publishing to Maven Central is a separate workflow that takes the tag.
 on:
   workflow_dispatch:
 
@@ -59,3 +60,15 @@ jobs:
         run: gh release create "v${{ steps.version.outputs.release }}" --target "$GITHUB_SHA" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
+    outputs:
+      release: ${{ steps.version.outputs.release }}
+
+  next-snapshot:
+    needs: release
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: piotr-janczukowicz/common-parent/.github/workflows/next-snapshot.yml@ae52ce7b5fb48235e78a3d096b6562edddd8d31f # v11
+    secrets: inherit
+    with:
+      tag: v${{ needs.release.outputs.release }}
