@@ -1,4 +1,4 @@
-name: CodeQL (automatic, on pull request and push, weekly)
+name: CodeQL
 
 on:
   pull_request:

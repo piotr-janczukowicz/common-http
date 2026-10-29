@@ -1,4 +1,4 @@
-name: Publish to Maven Central (manual)
+name: Publish to Maven Central
 
 # Run by hand with the tag the Release workflow created (such as v6). The steps live in common-parent so that every
 # repository publishes the same way.
