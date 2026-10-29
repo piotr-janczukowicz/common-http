@@ -1,4 +1,4 @@
-name: Release (manual)
+name: Release
 
 # Run by hand on the default branch. Deploys the next version to GitHub Packages, tags it and creates the GitHub
 # release, then opens the pull request for the next -SNAPSHOT version. The steps live in common-parent
