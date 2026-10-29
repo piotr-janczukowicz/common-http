@@ -1,7 +1,15 @@
 version: 2
+registries:
+  github-common-parent:
+    type: maven-repository
+    url: https://maven.pkg.github.com/piotr-janczukowicz/common-parent
+    username: ${{secrets.PACKAGES_USERNAME}}
+    password: ${{secrets.PACKAGES_TOKEN}}
 updates:
   - package-ecosystem: maven
     directory: /
+    registries:
+      - github-common-parent
     schedule:
       interval: weekly
     groups:
