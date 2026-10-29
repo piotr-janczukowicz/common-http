@@ -1,4 +1,4 @@
-name: Publish to Maven Central
+name: Publish to Maven Central (manual)
 
 # Run by hand with the tag the Release workflow created (such as v6). The steps live in common-parent so that every
 # repository publishes the same way.
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   publish:
-    uses: piotr-janczukowicz/common-parent/.github/workflows/publish.yml@ae52ce7b5fb48235e78a3d096b6562edddd8d31f # v11
+    uses: piotr-janczukowicz/common-parent/.github/workflows/reusable-publish.yml@fe405361177409155ca46773fdb6b9090ffad722 # v13
     with:
       tag: ${{ inputs.tag }}
     secrets: inherit
