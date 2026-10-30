@@ -19,7 +19,7 @@
 
   <properties>
     <common-util.version>9</common-util.version>
-    <common-json.version>6</common-json.version>
+    <common-json.version>8</common-json.version>
     <common-test-support.version>4</common-test-support.version>
     <test.module.args>--add-modules jdk.httpserver --add-reads common.http=jdk.httpserver</test.module.args>
   </properties>
