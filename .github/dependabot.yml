@@ -5,11 +5,29 @@ registries:
     url: https://maven.pkg.github.com/piotr-janczukowicz/common-parent
     username: ${{secrets.PACKAGES_USERNAME}}
     password: ${{secrets.PACKAGES_TOKEN}}
+  github-common-util:
+    type: maven-repository
+    url: https://maven.pkg.github.com/piotr-janczukowicz/common-util
+    username: ${{secrets.PACKAGES_USERNAME}}
+    password: ${{secrets.PACKAGES_TOKEN}}
+  github-common-json:
+    type: maven-repository
+    url: https://maven.pkg.github.com/piotr-janczukowicz/common-json
+    username: ${{secrets.PACKAGES_USERNAME}}
+    password: ${{secrets.PACKAGES_TOKEN}}
+  github-common-test-support:
+    type: maven-repository
+    url: https://maven.pkg.github.com/piotr-janczukowicz/common-test-support
+    username: ${{secrets.PACKAGES_USERNAME}}
+    password: ${{secrets.PACKAGES_TOKEN}}
 updates:
   - package-ecosystem: maven
     directory: /
     registries:
       - github-common-parent
+      - github-common-util
+      - github-common-json
+      - github-common-test-support
     schedule:
       interval: weekly
     groups:
