@@ -15,6 +15,21 @@
       <username>${env.GITHUB_ACTOR}</username>
       <password>${env.PACKAGES_TOKEN}</password>
     </server>
+    <server>
+      <id>github-common-util</id>
+      <username>${env.GITHUB_ACTOR}</username>
+      <password>${env.PACKAGES_TOKEN}</password>
+    </server>
+    <server>
+      <id>github-common-json</id>
+      <username>${env.GITHUB_ACTOR}</username>
+      <password>${env.PACKAGES_TOKEN}</password>
+    </server>
+    <server>
+      <id>github-common-test-support</id>
+      <username>${env.GITHUB_ACTOR}</username>
+      <password>${env.PACKAGES_TOKEN}</password>
+    </server>
   </servers>
   <profiles>
     <profile>
@@ -23,6 +38,18 @@
         <repository>
           <id>github-common-parent</id>
           <url>https://maven.pkg.github.com/piotr-janczukowicz/common-parent</url>
+        </repository>
+        <repository>
+          <id>github-common-util</id>
+          <url>https://maven.pkg.github.com/piotr-janczukowicz/common-util</url>
+        </repository>
+        <repository>
+          <id>github-common-json</id>
+          <url>https://maven.pkg.github.com/piotr-janczukowicz/common-json</url>
+        </repository>
+        <repository>
+          <id>github-common-test-support</id>
+          <url>https://maven.pkg.github.com/piotr-janczukowicz/common-test-support</url>
         </repository>
       </repositories>
       <pluginRepositories>
